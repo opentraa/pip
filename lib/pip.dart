@@ -48,6 +48,15 @@ class Pip {
     return PipPlatform.instance.setup(options);
   }
 
+  /// Get the Picture in Picture view.
+  /// Only available on iOS.
+  ///
+  /// Returns
+  /// The Picture in Picture view.
+  Future<int> getPipView() async {
+    return PipPlatform.instance.getPipView();
+  }
+
   /// Start Picture in Picture.
   ///
   /// Returns

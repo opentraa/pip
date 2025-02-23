@@ -162,6 +162,10 @@
   return NO;
 }
 
+- (UIView * _Nullable __weak)getPipView {
+  return _pipView;
+}
+
 - (BOOL)start {
   PIP_LOG(@"PipController start");
 

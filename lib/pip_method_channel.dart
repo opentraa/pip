@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
@@ -21,8 +23,7 @@ class MethodChannelPip extends PipPlatform {
         final jsonMap = Map<String, dynamic>.from(call.arguments as Map);
         final state = jsonMap['state'] as int;
         final error = jsonMap['error'] as String?;
-        _stateChangedObserver?.onPipStateChanged(
-            PipState.values[state], error);
+        _stateChangedObserver?.onPipStateChanged(PipState.values[state], error);
       }
     } catch (e) {
       assert(false, 'stateChanged error: $e');
@@ -42,8 +43,7 @@ class MethodChannelPip extends PipPlatform {
 
   @override
   Future<bool> isSupported() async {
-    final result =
-        await methodChannel.invokeMethod<bool>('isSupported', null);
+    final result = await methodChannel.invokeMethod<bool>('isSupported', null);
     return result ?? false;
   }
 
@@ -66,6 +66,16 @@ class MethodChannelPip extends PipPlatform {
 
     final result = await methodChannel.invokeMethod<bool>('setup', dicOptions);
     return result ?? false;
+  }
+
+  @override
+  Future<int> getPipView() async {
+    if (Platform.isIOS) {
+      final result = await methodChannel.invokeMethod<int>('getPipView', null);
+      return result ?? 0;
+    }
+
+    return Future.value(0);
   }
 
   @override

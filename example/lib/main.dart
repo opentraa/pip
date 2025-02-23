@@ -36,6 +36,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   bool _isPipSupported = false;
   bool _isPipAutoEnterSupported = false;
   bool _isPipActived = false;
+  int _pipView = 0;
 
   // Add controllers for input fields
   final _aspectRatioXController = TextEditingController(text: '16');
@@ -155,9 +156,14 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
       try {
         final success = await _pip.setup(options);
+        final pipView = await _pip.getPipView();
+        setState(() {
+          _pipView = pipView;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('PiP Setup ${success ? 'successful' : 'failed'}')),
+              content: Text(
+                  'PiP Setup ${success ? 'successful, pipView: $pipView' : 'failed'}')),
         );
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -242,8 +248,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                               );
                             } catch (e) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                    content: Text('PiP Start error: $e')),
+                                SnackBar(content: Text('PiP Start error: $e')),
                               );
                             }
                           },

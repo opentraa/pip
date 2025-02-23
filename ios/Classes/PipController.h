@@ -111,6 +111,13 @@ typedef NS_ENUM(NSInteger, PipState) {
 - (BOOL)setup:(PipOptions *_Nonnull)options;
 
 /**
+ * @method getPipView
+ * @abstract Get the pip view.
+ * @return The pip view.
+ */
+- (UIView * _Nullable __weak)getPipView;
+
+/**
  * @method start
  * @abstract Start pip.
  * @return Whether start pip is successful or not.

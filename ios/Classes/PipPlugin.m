@@ -60,6 +60,9 @@
 
       result([NSNumber numberWithBool:[self.pipController setup:options]]);
     }
+  } else if ([@"getPipView" isEqualToString:call.method]) {
+     result([NSNumber numberWithUnsignedLongLong:
+             (uint64_t)[self.pipController getPipView]]);
   } else if ([@"start" isEqualToString:call.method]) {
     result([NSNumber numberWithBool:[self.pipController start]]);
   } else if ([@"stop" isEqualToString:call.method]) {

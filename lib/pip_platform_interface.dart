@@ -178,6 +178,15 @@ abstract class PipPlatform extends PlatformInterface {
     throw UnimplementedError('setup() has not been implemented.');
   }
 
+  /// Get the Picture in Picture view.
+  /// Only available on iOS.
+  ///
+  /// Returns
+  /// The Picture in Picture view.
+  Future<int> getPipView() async {
+    throw UnimplementedError('getPipView() has not been implemented.');
+  }
+
   /// Start Picture in Picture.
   ///
   /// Returns
