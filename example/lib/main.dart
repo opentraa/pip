@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'dart:io';
 
+import 'native_view.dart';
+
 import 'package:flutter/services.dart';
 import 'package:pip/pip.dart';
+import 'package:native_plugin/native_plugin.dart';
 
 void main() {
   runApp(const MyApp());
@@ -37,11 +40,21 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   bool _isPipAutoEnterSupported = false;
   bool _isPipActived = false;
   int _pipView = 0;
+  int _currentImageIndex = 0;
+  Timer? _imageTimer;
+
+  final List<String> _imagePaths = [
+    'images/PIP1.png',
+    'images/PIP2.png',
+    'images/PIP3.png',
+  ];
 
   // Add controllers for input fields
   final _aspectRatioXController = TextEditingController(text: '16');
   final _aspectRatioYController = TextEditingController(text: '9');
   bool _autoEnterEnabled = false;
+
+  final _nativePlugin = NativePlugin();
 
   AppLifecycleState _lastAppLifecycleState = AppLifecycleState.resumed;
 
@@ -50,10 +63,22 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     initPlatformState();
+    if (Platform.isAndroid) {
+      _startImageTimer();
+    }
+  }
+
+  void _startImageTimer() {
+    _imageTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
+      setState(() {
+        _currentImageIndex = (_currentImageIndex + 1) % _imagePaths.length;
+      });
+    });
   }
 
   @override
   void dispose() {
+    _imageTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _aspectRatioXController.dispose();
     _aspectRatioYController.dispose();
@@ -110,6 +135,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     bool pipIsAutoEnterSupported = false;
     bool isPipActived = false;
     try {
+      var platformVersion = await _nativePlugin.getPlatformVersion();
+      print('[platformVersion]: $platformVersion');
       pipIsSupported = await _pip.isSupported();
       pipIsAutoEnterSupported = await _pip.isAutoEnterSupported();
       isPipActived = await _pip.isActived();
@@ -193,6 +220,37 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                       'Auto Enter Supported: $_isPipAutoEnterSupported\n'
                       'Actived: $_isPipActived',
                       style: const TextStyle(fontSize: 16),
+                    ),
+                    const SizedBox(height: 20),
+                    Center(
+                      child: Platform.isAndroid
+                          ? Builder(
+                              builder: (context) {
+                                try {
+                                  return Image.asset(
+                                    _imagePaths[_currentImageIndex],
+                                    height: 200,
+                                    fit: BoxFit.contain,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      print('Error loading image: $error');
+                                      print('Stack trace: $stackTrace');
+                                      return const Text('Error loading image');
+                                    },
+                                  );
+                                } catch (e) {
+                                  print('Exception while loading image: $e');
+                                  return Text('Exception: $e');
+                                }
+                              },
+                            )
+                          : SizedBox(
+                              height: 200,
+                              child: NativeWidget(
+                                onPlatformViewCreated: (id) {
+                                  print('Platform view created: $id');
+                                },
+                              ),
+                            ),
                     ),
                     const SizedBox(height: 20),
                     CheckboxListTile(
