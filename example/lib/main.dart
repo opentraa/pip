@@ -39,7 +39,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   bool _isPipSupported = false;
   bool _isPipAutoEnterSupported = false;
   bool _isPipActived = false;
-  int _pipView = 0;
+  int _playerView = 0;
+  int _pipContentView = 0;
   int _currentImageIndex = 0;
   Timer? _imageTimer;
 
@@ -78,6 +79,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    if (Platform.isIOS && _pipContentView != 0) {
+      _nativePlugin.disposePipContentView(_pipContentView);
+    }
+
     _imageTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _aspectRatioXController.dispose();
@@ -170,27 +175,43 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       _isPipSupported = pipIsSupported;
       _isPipAutoEnterSupported = pipIsAutoEnterSupported;
       _isPipActived = isPipActived;
+
+      // set the autoEnterEnabled to true if the pip is auto enter supported
+      _autoEnterEnabled = pipIsAutoEnterSupported;
     });
   }
 
   Future<void> _setupPip() async {
     if (_formKey.currentState!.validate()) {
+      if (Platform.isIOS && _pipContentView == 0) {
+        _pipContentView = await _nativePlugin.createPipContentView();
+        print('[createPipContentView]: $_pipContentView');
+
+        setState(() {
+          _pipContentView = _pipContentView;
+        });
+      }
       final options = PipOptions(
         autoEnterEnabled: _autoEnterEnabled,
+
+        // android only
         aspectRatioX: int.tryParse(_aspectRatioXController.text),
         aspectRatioY: int.tryParse(_aspectRatioYController.text),
+
+        // ios only
+        contentView: _pipContentView,
+        sourceContentView: _playerView,
+        preferredContentWidth: 900,
+        preferredContentHeight: 1600,
+        controlStyle: 2,
       );
 
       try {
         final success = await _pip.setup(options);
-        final pipView = await _pip.getPipView();
-        setState(() {
-          _pipView = pipView;
-        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
               content: Text(
-                  'PiP Setup ${success ? 'successful, pipView: $pipView' : 'failed'}')),
+                  'PiP Setup ${success ? 'successful' : 'failed'}')),
         );
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -207,6 +228,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         child: NativeWidget(
           onPlatformViewCreated: (id, internalViewId) {
             print('Platform view created: $id, internalViewId: $internalViewId');
+            setState(() {
+              _playerView = internalViewId;
+            });
           },
         ),
       );

@@ -1,4 +1,6 @@
 #import "PipController.h"
+#import "PipView.h"
+#include <objc/objc.h>
 
 #import <AVKit/AVKit.h>
 #import <UIKit/UIKit.h>
@@ -15,27 +17,12 @@
 #define PIP_LOG(fmt, ...)
 #endif
 
-@interface PipView : UIView
-@end
-
-@implementation PipView
-
-- (instancetype)init {
-  self = [super init];
-  return self;
-}
-
-+ (Class)layerClass {
-  return [AVSampleBufferDisplayLayer class];
-}
-
-@end
-
 @implementation PipOptions {
 }
 @end
 
-@interface PipController ()
+@interface PipController () <AVPictureInPictureControllerDelegate,
+                             AVPictureInPictureSampleBufferPlaybackDelegate>
 
 // delegate
 @property(nonatomic, weak) id<PipStateChangedDelegate> pipStateDelegate;
@@ -43,11 +30,17 @@
 // is actived
 @property(atomic, assign) BOOL isPipActived;
 
+// content view
+@property(nonatomic, assign) UIView *contentView;
+
 // pip view
 @property(nonatomic, strong) PipView *pipView;
 
 // pip controller
 @property(nonatomic, strong) AVPictureInPictureController *pipController;
+
+// pip view controller, weak reference
+@property(nonatomic) UIViewController *pipViewController;
 
 @end
 
@@ -89,9 +82,9 @@
 
 - (BOOL)setup:(PipOptions *)options {
   PIP_LOG(@"PipController setup with preferredContentSize: %@, "
-                  @"autoEnterEnabled: %d",
-                  NSStringFromCGSize(options.preferredContentSize),
-                  options.autoEnterEnabled);
+          @"autoEnterEnabled: %d",
+          NSStringFromCGSize(options.preferredContentSize),
+          options.autoEnterEnabled);
   if (![self isSupported]) {
     [_pipStateDelegate pipStateChanged:PipStateFailed
                                  error:@"Pip is not supported"];
@@ -106,6 +99,8 @@
             ? options.sourceContentView
             : [UIApplication.sharedApplication.keyWindow rootViewController]
                   .view;
+
+    _contentView = (UIView *)options.contentView;
 
     // We need to setup or re-setup the pip controller if:
     // 1. The pip controller hasn't been initialized yet (_pipController == nil)
@@ -124,36 +119,87 @@
 
       // create pip view
       _pipView = [[PipView alloc] init];
-      _pipView.autoresizingMask =
-          UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+      _pipView.translatesAutoresizingMaskIntoConstraints = NO;
 
-      // create pip view controller
-      AVPictureInPictureVideoCallViewController *pipViewController =
-          [[AVPictureInPictureVideoCallViewController alloc] init];
-      // if the preferredContentSize is not set, use 100x100 as the default size
-      // coz invalid size will cause the pip view to start failed with
-      // Domain=PGPegasusErrorDomain Code=-1003.
-      pipViewController.preferredContentSize =
-          CGSizeMake(options.preferredContentSize.width <= 0
-                         ? 100
-                         : options.preferredContentSize.width,
-                     options.preferredContentSize.height <= 0
-                         ? 100
-                         : options.preferredContentSize.height);
-      pipViewController.view.backgroundColor = UIColor.clearColor;
-      [pipViewController.view addSubview:_pipView];
+      [currentVideoSourceView insertSubview:_pipView atIndex:0];
+      [NSLayoutConstraint activateConstraints:@[
+        [_pipView.leadingAnchor
+            constraintEqualToAnchor:currentVideoSourceView.leadingAnchor],
+        [_pipView.trailingAnchor
+            constraintEqualToAnchor:currentVideoSourceView.trailingAnchor],
+        [_pipView.topAnchor
+            constraintEqualToAnchor:currentVideoSourceView.topAnchor],
+        [_pipView.bottomAnchor
+            constraintEqualToAnchor:currentVideoSourceView.bottomAnchor],
+      ]];
 
-      // create pip controller
+      [_pipView updateFrameSize:CGSizeMake(
+                                    options.preferredContentSize.width <= 0
+                                        ? 100
+                                        : options.preferredContentSize.width,
+                                    options.preferredContentSize.height <= 0
+                                        ? 100
+                                        : options.preferredContentSize.height)];
+
       AVPictureInPictureControllerContentSource *contentSource =
           [[AVPictureInPictureControllerContentSource alloc]
-              initWithActiveVideoCallSourceView:currentVideoSourceView
-                          contentViewController:pipViewController];
+              initWithSampleBufferDisplayLayer:_pipView.sampleBufferDisplayLayer
+                              playbackDelegate:self];
 
       _pipController = [[AVPictureInPictureController alloc]
           initWithContentSource:contentSource];
       _pipController.delegate = self;
       _pipController.canStartPictureInPictureAutomaticallyFromInline =
           options.autoEnterEnabled;
+
+      // hide forward and backward button
+      if (options.controlStyle >= 1) {
+        _pipController.requiresLinearPlayback = YES;
+      }
+
+      if (options.controlStyle == 2) {
+        // hide play pause button and the progress bar including forward and
+        // backward button
+        [_pipController setValue:[NSNumber numberWithInt:1]
+                          forKey:@"controlsStyle"];
+      } else if (options.controlStyle == 3) {
+        // hide all system controls including the close and restore button
+        [_pipController setValue:[NSNumber numberWithInt:2]
+                          forKey:@"controlsStyle"];
+      }
+
+      NSString *pipVCName =
+          [NSString stringWithFormat:@"pictureInPictureViewController"];
+      _pipViewController = [_pipController valueForKey:pipVCName];
+    } else {
+      // pip controller is already initialized, so we need to update the options
+
+      // if the content view is set, will add it to the pip view controller in
+      // the method of pictureInPictureControllerDidStartPictureInPicture.
+      //
+      // if _contentView is not equal to options.contentView, it means the
+      // content view has been changed, so we need to remove the old content
+      // view and add the new one.
+      if (_contentView != options.contentView) {
+        if (_contentView != nil) {
+          [_contentView removeFromSuperview];
+        }
+
+        _contentView = (UIView *)options.contentView;
+      }
+
+      if (options.preferredContentSize.width > 0 &&
+          options.preferredContentSize.height > 0) {
+        [_pipView
+            updateFrameSize:CGSizeMake(options.preferredContentSize.width,
+                                       options.preferredContentSize.height)];
+      }
+
+      if (options.autoEnterEnabled !=
+          _pipController.canStartPictureInPictureAutomaticallyFromInline) {
+        _pipController.canStartPictureInPictureAutomaticallyFromInline =
+            options.autoEnterEnabled;
+      }
     }
 
     return YES;
@@ -162,7 +208,7 @@
   return NO;
 }
 
-- (UIView * _Nullable __weak)getPipView {
+- (UIView *_Nullable __weak)getPipView {
   return _pipView;
 }
 
@@ -249,6 +295,8 @@
   }
 }
 
+#pragma mark - AVPictureInPictureControllerDelegate
+
 - (void)pictureInPictureControllerWillStartPictureInPicture:
     (AVPictureInPictureController *)pictureInPictureController {
   PIP_LOG(@"pictureInPictureControllerWillStartPictureInPicture");
@@ -257,6 +305,23 @@
 - (void)pictureInPictureControllerDidStartPictureInPicture:
     (AVPictureInPictureController *)pictureInPictureController {
   PIP_LOG(@"pictureInPictureControllerDidStartPictureInPicture");
+
+  if (_contentView != nil) {
+    [_pipViewController.view insertSubview:_contentView atIndex:0];
+    [_pipViewController.view bringSubviewToFront:_contentView];
+
+    _contentView.translatesAutoresizingMaskIntoConstraints = NO;
+    [_pipViewController.view addConstraints:@[
+      [_contentView.leadingAnchor
+          constraintEqualToAnchor:_pipViewController.view.leadingAnchor],
+      [_contentView.trailingAnchor
+          constraintEqualToAnchor:_pipViewController.view.trailingAnchor],
+      [_contentView.topAnchor
+          constraintEqualToAnchor:_pipViewController.view.topAnchor],
+      [_contentView.bottomAnchor
+          constraintEqualToAnchor:_pipViewController.view.bottomAnchor],
+    ]];
+  }
 
   _isPipActived = YES;
   [_pipStateDelegate pipStateChanged:PipStateStarted error:nil];
@@ -282,6 +347,51 @@
 
   _isPipActived = NO;
   [_pipStateDelegate pipStateChanged:PipStateStopped error:nil];
+
+  if (_contentView != nil) {
+    [_contentView removeFromSuperview];
+  }
 }
+
+#pragma mark - AVPictureInPictureSampleBufferPlaybackDelegate
+
+- (void)pictureInPictureController:
+            (nonnull AVPictureInPictureController *)pictureInPictureController
+         didTransitionToRenderSize:(CMVideoDimensions)newRenderSize {
+  PIP_LOG(@"didTransitionToRenderSize: %dx%d", newRenderSize.width,
+          newRenderSize.height);
+}
+
+- (void)pictureInPictureController:
+            (nonnull AVPictureInPictureController *)pictureInPictureController
+                        setPlaying:(BOOL)playing {
+  PIP_LOG(@"setPlaying: %@", playing ? @"YES" : @"NO");
+}
+
+- (void)pictureInPictureController:
+            (nonnull AVPictureInPictureController *)pictureInPictureController
+                    skipByInterval:(CMTime)skipInterval
+                 completionHandler:(nonnull void (^)(void))completionHandler {
+  completionHandler();
+}
+
+- (BOOL)pictureInPictureControllerIsPlaybackPaused:
+    (nonnull AVPictureInPictureController *)pictureInPictureController {
+  return NO;
+}
+
+- (CMTimeRange)pictureInPictureControllerTimeRangeForPlayback:
+    (nonnull AVPictureInPictureController *)pictureInPictureController {
+  // do not use kCMTimeIndefinite, otherwise the system will add a loading
+  // indicator to the pip view.
+  // https://stackoverflow.com/questions/69799535/picture-in-picture-from-avsamplebufferdisplaylayer-not-loading
+  return CMTimeRangeMake(kCMTimeZero, kCMTimePositiveInfinity);
+}
+
+//- (CMTime)pictureInPictureControllerCurrentTime:(nonnull
+// AVPictureInPictureController *)pictureInPictureController {
+////    return CMTimeMake(self.loopTimer ? 2 * self.loopTimer.timeInterval : 0,
+/// 1);
+//}
 
 @end

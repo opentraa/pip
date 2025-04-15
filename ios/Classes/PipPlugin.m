@@ -43,6 +43,14 @@
             objectForKey:@"sourceContentView"] pointerValue];
       }
 
+      // content view
+      if ([call.arguments objectForKey:@"contentView"] &&
+          [[call.arguments objectForKey:@"contentView"]
+              isKindOfClass:[NSNumber class]]) {
+        options.contentView = (__bridge UIView *)[[call.arguments
+            objectForKey:@"contentView"] pointerValue];
+      }
+
       // auto enter
       if ([call.arguments objectForKey:@"autoEnterEnabled"]) {
         options.autoEnterEnabled =
@@ -58,11 +66,20 @@
                 floatValue]);
       }
 
+      // control style
+      if ([call.arguments objectForKey:@"controlStyle"]) {
+        options.controlStyle =
+            [[call.arguments objectForKey:@"controlStyle"] intValue];
+      } else {
+        // default to show all system controls
+        options.controlStyle = 0;
+      }
+
       result([NSNumber numberWithBool:[self.pipController setup:options]]);
     }
   } else if ([@"getPipView" isEqualToString:call.method]) {
-     result([NSNumber numberWithUnsignedLongLong:
-             (uint64_t)[self.pipController getPipView]]);
+    result([NSNumber
+        numberWithUnsignedLongLong:(uint64_t)[self.pipController getPipView]]);
   } else if ([@"start" isEqualToString:call.method]) {
     result([NSNumber numberWithBool:[self.pipController start]]);
   } else if ([@"stop" isEqualToString:call.method]) {

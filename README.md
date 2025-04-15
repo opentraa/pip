@@ -3,6 +3,12 @@
 ## Introduction
 pip is a Flutter plugin that supports Picture in Picture (PiP) functionality for both Android and iOS. It allows applications to continue displaying content in a small window while in the background.
 
+## Preview
+
+![ios](assets/pip_ios.gif)
+
+Android is too simple to show, so I will not show it here.
+
 ## Installation
 Add the dependency in your `pubspec.yaml`:
 ```yaml
@@ -57,8 +63,10 @@ final options = PipOptions(
   sourceRectHintBottom: 720,  // Source rectangle bottom position
   // iOS specific options
   sourceContentView: 0,        // Source content view
+  contentView: 0,             // Content view to be displayed in PiP
   preferredContentWidth: 480,  // Preferred content width
-  preferredContentHeight: 270  // Preferred content height
+  preferredContentHeight: 270, // Preferred content height
+  controlStyle: 2,            // Control style for PiP window
 );
 
 await _pip.setup(options);
@@ -112,8 +120,14 @@ PipOptions({
   int? sourceRectHintBottom,  // Source rectangle bottom position
   // iOS specific options
   int? sourceContentView,      // Source content view
+  int? contentView,           // Content view to be displayed in PiP
   int? preferredContentWidth, // Preferred content width
-  int? preferredContentHeight // Preferred content height
+  int? preferredContentHeight,// Preferred content height
+  int? controlStyle,          // Control style for PiP window
+                              // 0: default show all system controls
+                              // 1: hide forward and backward button
+                              // 2: hide play pause button and the progress bar including forward and backward button (recommended)
+                              // 3: hide all system controls including the close and restore button
 })
 ```
 
@@ -179,6 +193,13 @@ Future<void> unregisterStateChangedObserver()
 - Call `pipStart()` when the app enters background (`AppLifecycleState.inactive`)
 - Call `pipStop()` when the app returns to foreground (`AppLifecycleState.resumed`)
 - Recommended to use `autoEnterEnabled` for automatic PiP mode entry
+- The `contentView` will be added to the PiP view after setup, and you are responsible for rendering the content view
+- Choose appropriate `controlStyle` based on your needs:
+  - Style 0: Shows all system controls (default)
+  - Style 1: Hides forward and backward buttons
+  - Style 2: Hides play/pause button and progress bar (recommended)
+  - Style 3: Hides all system controls including close and restore buttons
+- How to set the size of the PiP window? Just set the `preferredContentWidth` and `preferredContentHeight` in the `PipOptions`
 
 ## Best Practices
 
@@ -186,13 +207,18 @@ Future<void> unregisterStateChangedObserver()
 ```dart
 if (Platform.isAndroid) {
   options = PipOptions(
+    autoEnterEnabled: true,
     aspectRatioX: 16,
     aspectRatioY: 9,
   );
 } else if (Platform.isIOS) {
   options = PipOptions(
+    autoEnterEnabled: true,
+    contentView: someView,
+    sourceContentView: someOtherView,
     preferredContentWidth: 480,
     preferredContentHeight: 270,
+    controlStyle: 2,
   );
 }
 ```

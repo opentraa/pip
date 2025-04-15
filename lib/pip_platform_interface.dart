@@ -9,6 +9,7 @@ class PipOptions {
   /// @nodoc
   const PipOptions({
     this.autoEnterEnabled,
+
     // android only
     this.aspectRatioX,
     this.aspectRatioY,
@@ -16,10 +17,13 @@ class PipOptions {
     this.sourceRectHintTop,
     this.sourceRectHintRight,
     this.sourceRectHintBottom,
+
     // ios only
     this.sourceContentView,
+    this.contentView,
     this.preferredContentWidth,
     this.preferredContentHeight,
+    this.controlStyle,
   });
 
   /// @nodoc
@@ -44,14 +48,27 @@ class PipOptions {
   /// @nodoc
   final int? sourceRectHintBottom;
 
+  /// ios only
   /// @nodoc
   final int? sourceContentView;
+
+  /// after setup, the content view will be added to the pip view
+  /// user should be responsible for the rendering of the content view.
+  /// @nodoc
+  final int? contentView;
 
   /// @nodoc
   final int? preferredContentWidth;
 
   /// @nodoc
   final int? preferredContentHeight;
+
+  /// @nodoc
+  /// 0: default show all system controls
+  /// 1: hide forward and backward button
+  /// 2: hide play pause button and the progress bar including forward and backward button (recommended)
+  /// 3: hide all system controls including the close and restore button
+  final int? controlStyle;
 
   /// @nodoc
   Map<String, dynamic> toDictionary() {
@@ -78,8 +95,10 @@ class PipOptions {
     // only for ios
     if (defaultTargetPlatform == TargetPlatform.iOS) {
       writeNotNull('sourceContentView', sourceContentView);
+      writeNotNull('contentView', contentView);
       writeNotNull('preferredContentWidth', preferredContentWidth);
       writeNotNull('preferredContentHeight', preferredContentHeight);
+      writeNotNull('controlStyle', controlStyle);
     }
     return val;
   }

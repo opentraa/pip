@@ -46,6 +46,12 @@ typedef NS_ENUM(NSInteger, PipState) {
 @property(nonatomic, assign) UIView *_Nullable sourceContentView;
 
 /**
+ * @property contentView
+ * @abstract The content view for pip.
+ */
+@property(nonatomic, assign) UIView *_Nullable contentView;
+
+/**
  * @property autoEnterEnabled
  * @abstract Whether to enable auto enter pip.
  */
@@ -56,6 +62,12 @@ typedef NS_ENUM(NSInteger, PipState) {
  * @abstract The preferred content size for pip.
  */
 @property(nonatomic, assign) CGSize preferredContentSize;
+
+/**
+ * @property controlStyle
+ * @abstract The style of pip control.
+ */
+@property(nonatomic, assign) int controlStyle;
 
 @end
 

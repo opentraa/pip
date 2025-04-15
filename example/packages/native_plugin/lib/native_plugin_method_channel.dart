@@ -14,4 +14,15 @@ class MethodChannelNativePlugin extends NativePluginPlatform {
     final version = await methodChannel.invokeMethod<String>('getPlatformVersion');
     return version;
   }
+
+  @override
+  Future<int> createPipContentView() async {
+    final viewId = await methodChannel.invokeMethod<int>('createPipContentView');
+    return viewId ?? 0;
+  }
+
+  @override
+  Future<void> disposePipContentView(int viewId) async {
+    await methodChannel.invokeMethod<void>('disposePipContentView', viewId);
+  }
 }
