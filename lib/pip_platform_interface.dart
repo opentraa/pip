@@ -4,9 +4,8 @@ import 'package:flutter/widgets.dart' show TargetPlatform;
 
 import 'pip_method_channel.dart';
 
-/// @nodoc
+/// Picture in Picture options.
 class PipOptions {
-  /// @nodoc
   const PipOptions({
     this.autoEnterEnabled,
 
@@ -17,6 +16,9 @@ class PipOptions {
     this.sourceRectHintTop,
     this.sourceRectHintRight,
     this.sourceRectHintBottom,
+    this.seamlessResizeEnabled,
+    this.useExternalStateMonitor,
+    this.externalStateMonitorInterval,
 
     // ios only
     this.sourceContentView,
@@ -26,103 +28,125 @@ class PipOptions {
     this.controlStyle,
   });
 
-  /// @nodoc
+  /// Whether Picture in Picture can auto enter.
+  ///
+  /// Default is false.
   final bool? autoEnterEnabled;
 
   /// android only
-  /// @nodoc
+  /// The width of the aspect ratio.
   final int? aspectRatioX;
 
-  /// @nodoc
+  /// The height of the aspect ratio.
   final int? aspectRatioY;
 
-  /// @nodoc
+  /// The left of the source rect hint.
   final int? sourceRectHintLeft;
 
-  /// @nodoc
+  /// The top of the source rect hint.
   final int? sourceRectHintTop;
 
-  /// @nodoc
+  /// The right of the source rect hint.
   final int? sourceRectHintRight;
 
-  /// @nodoc
+  /// The bottom of the source rect hint.
   final int? sourceRectHintBottom;
 
+  /// Whether to enable seamless resize.
+  ///
+  /// Default is false.
+  final bool? seamlessResizeEnabled;
+
+  /// Whether to use external state monitor to detect the Picture in Picture state.
+  ///
+  /// Default is false. If true, the Picture in Picture state will be detected by the external state monitor thread.
+  final bool? useExternalStateMonitor;
+
+  /// The interval of the external state monitor.
+  ///
+  /// Default is 100 milliseconds.
+  final int? externalStateMonitorInterval;
+
   /// ios only
-  /// @nodoc
+  /// The source content view.
   final int? sourceContentView;
 
   /// after setup, the content view will be added to the pip view
   /// user should be responsible for the rendering of the content view.
-  /// @nodoc
   final int? contentView;
 
-  /// @nodoc
+  /// The preferred width of the content view.
   final int? preferredContentWidth;
 
-  /// @nodoc
+  /// The preferred height of the content view.
   final int? preferredContentHeight;
 
-  /// @nodoc
+  /// The control style of the content view.
+  ///
   /// 0: default show all system controls
   /// 1: hide forward and backward button
   /// 2: hide play pause button and the progress bar including forward and backward button (recommended)
   /// 3: hide all system controls including the close and restore button
   final int? controlStyle;
 
-  /// @nodoc
+  /// Convert the options to a dictionary.
   Map<String, dynamic> toDictionary() {
     final val = <String, dynamic>{};
 
-    void writeNotNull(String key, dynamic value) {
+    void writePropertyIfNotNull(String key, dynamic value) {
       if (value != null) {
         val[key] = value;
       }
     }
 
-    writeNotNull('autoEnterEnabled', autoEnterEnabled);
+    writePropertyIfNotNull('autoEnterEnabled', autoEnterEnabled);
 
     // only for android
     if (defaultTargetPlatform == TargetPlatform.android) {
-      writeNotNull('aspectRatioX', aspectRatioX);
-      writeNotNull('aspectRatioY', aspectRatioY);
-      writeNotNull('sourceRectHintLeft', sourceRectHintLeft);
-      writeNotNull('sourceRectHintTop', sourceRectHintTop);
-      writeNotNull('sourceRectHintRight', sourceRectHintRight);
-      writeNotNull('sourceRectHintBottom', sourceRectHintBottom);
+      writePropertyIfNotNull('aspectRatioX', aspectRatioX);
+      writePropertyIfNotNull('aspectRatioY', aspectRatioY);
+      writePropertyIfNotNull('sourceRectHintLeft', sourceRectHintLeft);
+      writePropertyIfNotNull('sourceRectHintTop', sourceRectHintTop);
+      writePropertyIfNotNull('sourceRectHintRight', sourceRectHintRight);
+      writePropertyIfNotNull('sourceRectHintBottom', sourceRectHintBottom);
+      writePropertyIfNotNull('seamlessResizeEnabled', seamlessResizeEnabled);
+      writePropertyIfNotNull(
+          'useExternalStateMonitor', useExternalStateMonitor);
+      writePropertyIfNotNull(
+          'externalStateMonitorInterval', externalStateMonitorInterval);
     }
 
     // only for ios
     if (defaultTargetPlatform == TargetPlatform.iOS) {
-      writeNotNull('sourceContentView', sourceContentView);
-      writeNotNull('contentView', contentView);
-      writeNotNull('preferredContentWidth', preferredContentWidth);
-      writeNotNull('preferredContentHeight', preferredContentHeight);
-      writeNotNull('controlStyle', controlStyle);
+      writePropertyIfNotNull('sourceContentView', sourceContentView);
+      writePropertyIfNotNull('contentView', contentView);
+      writePropertyIfNotNull('preferredContentWidth', preferredContentWidth);
+      writePropertyIfNotNull('preferredContentHeight', preferredContentHeight);
+      writePropertyIfNotNull('controlStyle', controlStyle);
     }
     return val;
   }
 }
 
-/// @nodoc
+/// The state of the Picture in Picture.
 enum PipState {
-  /// @nodoc
+  /// The Picture in Picture is started.
   pipStateStarted,
 
-  /// @nodoc
+  /// The Picture in Picture is stopped.
   pipStateStopped,
 
-  /// @nodoc
+  /// The Picture in Picture is failed.
   pipStateFailed,
 }
 
 class PipStateChangedObserver {
-  /// @nodoc
+  /// The observer of the Picture in Picture state changed.
   const PipStateChangedObserver({
     required this.onPipStateChanged,
   });
 
-  /// @nodoc
+  /// The callback of the Picture in Picture state changed.
   final void Function(PipState state, String? error) onPipStateChanged;
 }
 

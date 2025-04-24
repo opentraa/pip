@@ -1,5 +1,6 @@
 #import "PipController.h"
 #import "PipView.h"
+#include <Foundation/Foundation.h>
 #include <objc/objc.h>
 
 #import <AVKit/AVKit.h>
@@ -17,6 +18,8 @@
 #define PIP_LOG(fmt, ...)
 #endif
 
+#define USE_PIP_VIEW_CONTROLLER 0
+
 @implementation PipOptions {
 }
 @end
@@ -30,17 +33,44 @@
 // is actived
 @property(atomic, assign) BOOL isPipActived;
 
+#pragma mark - content view
 // content view
 @property(nonatomic, assign) UIView *contentView;
 
+// content view original index
+@property(nonatomic, assign) NSUInteger contentViewOriginalIndex;
+
+// content view original frame
+@property(nonatomic, assign) CGRect contentViewOriginalFrame;
+
+// content view original constraints
+@property(nonatomic, strong) NSMutableArray *contentViewOriginalConstraints;
+
+// content view original translatesAutoresizingMaskIntoConstraints
+@property(nonatomic, assign)
+    bool contentViewOriginalTranslatesAutoresizingMaskIntoConstraints;
+
+// content view original parent view
+@property(nonatomic, assign) UIView *contentViewOriginalParentView;
+
+// content view original parent view constraints
+@property(nonatomic, strong)
+    NSMutableArray *contentViewOriginalParentViewConstraints;
+
+#pragma mark - pip view
 // pip view
 @property(nonatomic, strong) PipView *pipView;
 
 // pip controller
 @property(nonatomic, strong) AVPictureInPictureController *pipController;
 
+#if USE_PIP_VIEW_CONTROLLER
+// Do not use this anymore, it is dangerous to use it and do not have the best
+// user experience(we have to call bringToFront in didStart which make the
+// truely pip view not visible for a while ).
 // pip view controller, weak reference
 @property(nonatomic) UIViewController *pipViewController;
+#endif
 
 @end
 
@@ -50,6 +80,8 @@
   self = [super init];
   if (self) {
     _pipStateDelegate = delegate;
+    _contentViewOriginalConstraints = [[NSMutableArray alloc] init];
+    _contentViewOriginalParentViewConstraints = [[NSMutableArray alloc] init];
   }
   return self;
 }
@@ -105,7 +137,6 @@
     // We need to setup or re-setup the pip controller if:
     // 1. The pip controller hasn't been initialized yet (_pipController == nil)
     // 2. The content source is missing (_pipController.contentSource == nil)
-    // 3. The active video call source view has changed to a different
     // view(which
     //    may caused by function dispose or call setup with different video
     //    source view)
@@ -113,15 +144,14 @@
     //    currentVideoSourceView)
     // This ensures the pip controller is properly configured with the current
     // video source with a good user experience.
-    if (_pipController == nil || _pipController.contentSource == nil ||
-        _pipController.contentSource.activeVideoCallSourceView !=
-            currentVideoSourceView) {
+    if (_pipController == nil || _pipController.contentSource == nil) {
 
       // create pip view
       _pipView = [[PipView alloc] init];
-      _pipView.translatesAutoresizingMaskIntoConstraints = NO;
 
       [currentVideoSourceView insertSubview:_pipView atIndex:0];
+
+      _pipView.translatesAutoresizingMaskIntoConstraints = NO;
       [NSLayoutConstraint activateConstraints:@[
         [_pipView.leadingAnchor
             constraintEqualToAnchor:currentVideoSourceView.leadingAnchor],
@@ -168,9 +198,11 @@
                           forKey:@"controlsStyle"];
       }
 
+#if USE_PIP_VIEW_CONTROLLER
       NSString *pipVCName =
           [NSString stringWithFormat:@"pictureInPictureViewController"];
       _pipViewController = [_pipController valueForKey:pipVCName];
+#endif
     } else {
       // pip controller is already initialized, so we need to update the options
 
@@ -182,7 +214,7 @@
       // view and add the new one.
       if (_contentView != options.contentView) {
         if (_contentView != nil) {
-          [_contentView removeFromSuperview];
+          [self restoreContentViewIfNeeded];
         }
 
         _contentView = (UIView *)options.contentView;
@@ -262,10 +294,134 @@
   [self->_pipController stopPictureInPicture];
 }
 
+// insert the content view to the new parent view
+// you should call this method in the method of
+// pictureInPictureControllerDidStartPictureInPicture or
+// pictureInPictureControllerWillStartPictureInPicture, but bringSubViewToFront
+// only take effect in the method of
+// pictureInPictureControllerDidStartPictureInPicture, so if you call this
+// method in the method of pictureInPictureControllerWillStartPictureInPicture,
+// you should addtionaly call bringSubViewToFront in
+// pictureInPictureControllerDidStartPictureInPicture.
+- (void)insertContentViewIfNeeded:(UIView *)newParentView {
+  // if the content view is not set or the new parent view is not set, just
+  // return
+  if (_contentView == nil || newParentView == nil) {
+    PIP_LOG(@"insertContentViewIfNeeded: contentView or newParentView is nil");
+    return;
+  }
+
+  // if the content view is already in the new parent view, just return
+  if ([newParentView.subviews containsObject:_contentView]) {
+    PIP_LOG(@"insertContentViewIfNeeded: contentView is already in the new "
+            @"parent view");
+    return;
+  }
+
+  // save the original content view properties
+  _contentViewOriginalParentView = _contentView.superview;
+  if (_contentViewOriginalParentView != nil) {
+    _contentViewOriginalIndex =
+        [_contentViewOriginalParentView.subviews indexOfObject:_contentView];
+    _contentViewOriginalFrame = _contentView.frame;
+    _contentViewOriginalTranslatesAutoresizingMaskIntoConstraints =
+        _contentView.translatesAutoresizingMaskIntoConstraints;
+    [_contentViewOriginalConstraints
+        addObjectsFromArray:_contentView.constraints.mutableCopy];
+    [_contentViewOriginalParentViewConstraints
+        addObjectsFromArray:_contentViewOriginalParentView.constraints
+                                .mutableCopy];
+
+    // remove the content view from the original parent view
+    [_contentView removeFromSuperview];
+
+    PIP_LOG(
+        @"insertContentViewIfNeeded: contentView is removed from the original "
+        @"parent view");
+  }
+
+  // add the content view to the new parent view
+  [newParentView insertSubview:_contentView
+                       atIndex:newParentView.subviews.count];
+
+  // no need to bring the content view to the front, because the content view
+  // will be added to the front of the new parent view.
+  // // bring the content view to the front
+  // [newParentView bringSubviewToFront:_contentView];
+
+  // update the content view constraints
+  _contentView.translatesAutoresizingMaskIntoConstraints = YES;
+  _contentView.autoresizingMask =
+      UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+  _contentView.frame = newParentView.frame;
+
+  // It seems like no need to do so.
+  // [newParentView addConstraints:@[
+  //   [_contentView.leadingAnchor
+  //       constraintEqualToAnchor:newParentView.leadingAnchor],
+  //   [_contentView.trailingAnchor
+  //       constraintEqualToAnchor:newParentView.trailingAnchor],
+  //   [_contentView.topAnchor constraintEqualToAnchor:newParentView.topAnchor],
+  //   [_contentView.bottomAnchor
+  //       constraintEqualToAnchor:newParentView.bottomAnchor],
+  // ]];
+
+  PIP_LOG(@"insertContentViewIfNeeded: contentView is added to the new parent "
+          @"view");
+}
+
+- (void)restoreContentViewIfNeeded {
+  // only restore the content view if it is not nil and the original parent
+  // view is not nil and the content view is already in the original parent view
+  if (_contentView == nil || _contentViewOriginalParentView == nil ||
+      [_contentViewOriginalParentView.subviews containsObject:_contentView]) {
+    PIP_LOG(
+        @"restoreContentViewIfNeeded: _contentViewOriginalParentView is nil or "
+        @"contentView is already in the original parent view");
+    return;
+  }
+
+  [_contentView removeFromSuperview];
+  PIP_LOG(
+      @"restoreContentViewIfNeeded: contentView is removed from the original "
+      @"parent view");
+
+  // in case that the subviews of _contentViewOriginalParentView has been
+  // changed, we need to get the real index of the content view.
+  NSUInteger trueIndex = MIN(_contentViewOriginalParentView.subviews.count,
+                             _contentViewOriginalIndex);
+  [_contentViewOriginalParentView insertSubview:_contentView atIndex:trueIndex];
+
+  PIP_LOG(@"restoreContentViewIfNeeded: contentView is added to the original "
+          @"parent view "
+          @"at index: %lu",
+          trueIndex);
+
+  // restore the original frame
+  _contentView.frame = _contentViewOriginalFrame;
+
+  // restore the original constraints
+  [_contentView removeConstraints:_contentView.constraints.copy];
+  [_contentView addConstraints:_contentViewOriginalConstraints];
+
+  // restore the original translatesAutoresizingMaskIntoConstraints
+  _contentView.translatesAutoresizingMaskIntoConstraints =
+      _contentViewOriginalTranslatesAutoresizingMaskIntoConstraints;
+
+  // restore the original parent view
+  [_contentViewOriginalParentView
+      removeConstraints:_contentViewOriginalParentView.constraints.copy];
+  [_contentViewOriginalParentView
+      addConstraints:_contentViewOriginalParentViewConstraints];
+}
+
 - (void)dispose {
   PIP_LOG(@"PipController dispose");
 
   if (self->_pipController != nil) {
+    // restore the content view if it is in the pip view controller
+    [self restoreContentViewIfNeeded];
+
     // if ([self->_pipController isPictureInPictureActive]) {
     //   [self->_pipController stopPictureInPicture];
     // }
@@ -300,28 +456,36 @@
 - (void)pictureInPictureControllerWillStartPictureInPicture:
     (AVPictureInPictureController *)pictureInPictureController {
   PIP_LOG(@"pictureInPictureControllerWillStartPictureInPicture");
+
+#if USE_PIP_VIEW_CONTROLLER
+  if (_pipViewController) {
+    [self insertContentViewIfNeeded:_pipViewController.view];
+  }
+#endif
 }
 
 - (void)pictureInPictureControllerDidStartPictureInPicture:
     (AVPictureInPictureController *)pictureInPictureController {
   PIP_LOG(@"pictureInPictureControllerDidStartPictureInPicture");
 
-  if (_contentView != nil) {
-    [_pipViewController.view insertSubview:_contentView atIndex:0];
+#if USE_PIP_VIEW_CONTROLLER
+  // if you use the pipViewController, you must call this every time to bring
+  // the content view to the front, otherwise the content view will not be
+  // visible and covered by the pip host view.
+  if (_pipViewController) {
     [_pipViewController.view bringSubviewToFront:_contentView];
-
-    _contentView.translatesAutoresizingMaskIntoConstraints = NO;
-    [_pipViewController.view addConstraints:@[
-      [_contentView.leadingAnchor
-          constraintEqualToAnchor:_pipViewController.view.leadingAnchor],
-      [_contentView.trailingAnchor
-          constraintEqualToAnchor:_pipViewController.view.trailingAnchor],
-      [_contentView.topAnchor
-          constraintEqualToAnchor:_pipViewController.view.topAnchor],
-      [_contentView.bottomAnchor
-          constraintEqualToAnchor:_pipViewController.view.bottomAnchor],
-    ]];
   }
+#else
+  // TODO @sylar: check if this is the best way to do this, what will happen if
+  // we have multiple windows? what if the root view controller is not a
+  // UIViewController?
+  UIWindow *window = [[UIApplication sharedApplication] windows].firstObject;
+  if (window) {
+    UIViewController *rootViewController = window.rootViewController;
+    UIView *superview = rootViewController.view.superview;
+    [self insertContentViewIfNeeded:superview];
+  }
+#endif
 
   _isPipActived = YES;
   [_pipStateDelegate pipStateChanged:PipStateStarted error:nil];
@@ -339,18 +503,25 @@
 - (void)pictureInPictureControllerWillStopPictureInPicture:
     (AVPictureInPictureController *)pictureInPictureController {
   PIP_LOG(@"pictureInPictureControllerWillStopPictureInPicture");
+
+  // you can restore the content view in this method, but it will have a not so
+  // good user experience. you will see the content view is not visible
+  // immediately, but the pip window is still showing with a black background,
+  // then animation to the settled contentSourceView. [self
+  // restoreContentViewIfNeeded];
 }
 
 - (void)pictureInPictureControllerDidStopPictureInPicture:
     (AVPictureInPictureController *)pictureInPictureController {
   PIP_LOG(@"pictureInPictureControllerDidStopPictureInPicture");
 
+  // restore the content view in
+  // pictureInPictureControllerDidStopPictureInPicture will have the best user
+  // experience.
+  [self restoreContentViewIfNeeded];
+
   _isPipActived = NO;
   [_pipStateDelegate pipStateChanged:PipStateStopped error:nil];
-
-  if (_contentView != nil) {
-    [_contentView removeFromSuperview];
-  }
 }
 
 #pragma mark - AVPictureInPictureSampleBufferPlaybackDelegate

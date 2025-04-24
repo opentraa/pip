@@ -2,18 +2,21 @@ package org.opentraa.pip;
 
 import android.app.Activity;
 import android.app.PictureInPictureParams;
+import android.app.PictureInPictureUiState;
 import android.content.pm.PackageManager;
+import android.content.res.Configuration;
 import android.graphics.Rect;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Rational;
-import androidx.annotation.ChecksSdkIntAtLeast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 import java.lang.ref.WeakReference;
+import java.util.Objects;
 
-public class PipController {
+public class PipController implements PipActivity.PipActivityListener {
   public enum PipState {
     Started(0),
     Stopped(1),
@@ -34,16 +37,27 @@ public class PipController {
     @Nullable private final Rational aspectRatio;
     @Nullable private final Boolean autoEnterEnabled;
     @Nullable private final Rect sourceRectHint;
+    @Nullable private final Boolean seamlessResizeEnabled;
+    @Nullable private final Boolean useExternalStateMonitor;
+    @Nullable private final Integer externalStateMonitorInterval;
 
     public PipParams(@Nullable Rational aspectRatio,
                      @Nullable Boolean autoEnterEnabled,
-                     @Nullable Rect sourceRectHint) {
+                     @Nullable Rect sourceRectHint,
+                     @Nullable Boolean seamlessResizeEnabled,
+                     @Nullable Boolean useExternalStateMonitor,
+                     @Nullable Integer externalStateMonitorInterval) {
       this.aspectRatio = aspectRatio;
       this.autoEnterEnabled = autoEnterEnabled;
       this.sourceRectHint = sourceRectHint;
+      this.seamlessResizeEnabled = seamlessResizeEnabled;
+      this.useExternalStateMonitor = useExternalStateMonitor;
+      this.externalStateMonitorInterval = externalStateMonitorInterval;
     }
   }
 
+  private boolean mIsSupported = false;
+  private boolean mIsAutoEnterSupported = false;
   private PipParams mPipParams;
   private PictureInPictureParams.Builder mParamsBuilder;
   private WeakReference<Activity> mActivity;
@@ -57,8 +71,8 @@ public class PipController {
   private boolean mLastPipState = false;
 
   public PipController(@NonNull Activity activity,
-                        @Nullable PipStateChangedListener listener) {
-    mActivity = new WeakReference<>(activity);
+                       @Nullable PipStateChangedListener listener) {
+    setActivity(activity);
     mListener = listener;
     mHandler = new Handler(Looper.getMainLooper());
   }
@@ -81,20 +95,13 @@ public class PipController {
     }
   }
 
-  public void attachToActivity(@NonNull Activity activity) {
-    if (mActivity != null && mActivity.get() != null &&
-        mActivity.get() != activity) {
-      mActivity = new WeakReference<>(activity);
-    }
-  }
-
-  public boolean isSupported() {
+  private boolean checkPipSupport() {
     Activity activity = mActivity.get();
     if (activity == null) {
       return false;
     }
 
-    // for android 8
+    // only support android 8 and above
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
       return false;
     }
@@ -108,15 +115,37 @@ public class PipController {
     return pm.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE);
   }
 
-  @ChecksSdkIntAtLeast(api = Build.VERSION_CODES.S)
-  public boolean isAutoEnterSupported() {
-    // // for android 12
-    // // whether support setAutoEnterEnabled or not
-    // return Build.VERSION.SDK_INT >= Build.VERSION_CODES.S;
+  private boolean checkAutoEnterSupport() {
+    // Android 12 and above support to set auto enter enabled directly
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+      return true;
+    }
 
-    // since flutter do not delegate onPause and onPiPModeChanged and
-    // onPipStateChanged, we do not support auto enter pip on android for now
-    return false;
+    // For android 11 and below, we need to check if the activity is kind of
+    // PipActivity since we can enter pip mode when the onUserLeaveHint is
+    // called to enter pip mode as a workaround
+    Activity activity = mActivity.get();
+    return activity instanceof PipActivity;
+  }
+
+  private void setActivity(Activity activity) {
+    mActivity = new WeakReference<>(activity);
+    if (activity instanceof PipActivity) {
+      ((PipActivity)activity).setPipActivityListener(this);
+    }
+
+    mIsSupported = checkPipSupport();
+    mIsAutoEnterSupported = checkAutoEnterSupport();
+  }
+
+  public void attachToActivity(@NonNull Activity activity) {
+    setActivity(activity);
+  }
+
+  public boolean isSupported() { return mIsSupported; }
+
+  public boolean isAutoEnterSupported() {
+    return mIsAutoEnterSupported;
   }
 
   public boolean isActived() {
@@ -135,7 +164,10 @@ public class PipController {
 
   public boolean setup(@Nullable Rational aspectRatio,
                        @Nullable Boolean autoEnterEnabled,
-                       @Nullable Rect sourceRectHint) {
+                       @Nullable Rect sourceRectHint,
+                       @Nullable Boolean seamlessResizeEnabled,
+                       @Nullable Boolean useExternalStateMonitor,
+                       @Nullable Integer externalStateMonitorInterval) {
     if (!isSupported()) {
       return false;
     }
@@ -151,13 +183,19 @@ public class PipController {
       }
 
       if (mPipParams == null ||
-          (aspectRatio != null && mPipParams.aspectRatio != aspectRatio) ||
-          (autoEnterEnabled != null &&
-           mPipParams.autoEnterEnabled != autoEnterEnabled) ||
-          (sourceRectHint != null &&
-           mPipParams.sourceRectHint != sourceRectHint)) {
+          !Objects.equals(mPipParams.aspectRatio, aspectRatio) ||
+          !Objects.equals(mPipParams.autoEnterEnabled, autoEnterEnabled) ||
+          !Objects.equals(mPipParams.sourceRectHint, sourceRectHint) ||
+          !Objects.equals(mPipParams.seamlessResizeEnabled,
+                          seamlessResizeEnabled) ||
+          !Objects.equals(mPipParams.useExternalStateMonitor,
+                          useExternalStateMonitor) ||
+          !Objects.equals(mPipParams.externalStateMonitorInterval,
+                          externalStateMonitorInterval)) {
         mPipParams =
-            new PipParams(aspectRatio, autoEnterEnabled, sourceRectHint);
+            new PipParams(aspectRatio, autoEnterEnabled, sourceRectHint,
+                          seamlessResizeEnabled, useExternalStateMonitor,
+                          externalStateMonitorInterval);
       }
 
       if (mPipParams.aspectRatio != null) {
@@ -167,14 +205,8 @@ public class PipController {
       // Note: setAutoEnterEnabled will not work if the target Android version
       // is 11 or lower
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        // mParamsBuilder.setAutoEnterEnabled(
-        //         Boolean.TRUE.equals(mPipParams.autoEnterEnabled));
-        // since flutter do not delegate onPause and onPiPModeChanged and
-        // onPipStateChanged, we do not support auto enter pip on android for
-        // now
-        //
-        // so we always set autoEnterEnabled to false for now
-        mParamsBuilder.setAutoEnterEnabled(false);
+        mParamsBuilder.setAutoEnterEnabled(
+            Boolean.TRUE.equals(mPipParams.autoEnterEnabled));
       }
 
       if (mPipParams.sourceRectHint != null) {
@@ -185,7 +217,11 @@ public class PipController {
       // videos where the content can be arbitrarily scaled, but you can disable
       // this for non-video content so that the picture-in-picture mode is
       // resized with a cross fade animation.
-      mParamsBuilder.setSeamlessResizeEnabled(false);
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+          mPipParams.seamlessResizeEnabled != null) {
+        mParamsBuilder.setSeamlessResizeEnabled(
+            Boolean.TRUE.equals(mPipParams.seamlessResizeEnabled));
+      }
 
       activity.setPictureInPictureParams(mParamsBuilder.build());
     }
@@ -214,13 +250,14 @@ public class PipController {
       return false;
     }
 
+    boolean bRes = true;
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-      activity.enterPictureInPictureMode(mParamsBuilder.build());
+      bRes = activity.enterPictureInPictureMode(mParamsBuilder.build());
     } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
       activity.enterPictureInPictureMode();
     }
 
-    return true;
+    return bRes;
   }
 
   public void stop() {
@@ -244,7 +281,6 @@ public class PipController {
     // do not call stop() here, coz there is no truly stop in android, the
     // implement of stop() is just moveTaskToBack(false), which is not what we
     // want.
-    //
     // stop();
 
     Activity activity = mActivity.get();
@@ -266,6 +302,14 @@ public class PipController {
   }
 
   private void startStateMonitoring() {
+    // Do not need to monitor the pip state with external thread when the
+    // activity is kind of PipActivity and the external state monitor is
+    // not enabled
+    if (mActivity.get() instanceof PipActivity &&
+        !Boolean.TRUE.equals(mPipParams.useExternalStateMonitor)) {
+      return;
+    }
+
     if (mHandler == null) {
       mHandler = new Handler(Looper.getMainLooper());
     }
@@ -279,27 +323,52 @@ public class PipController {
       @Override
       public void run() {
         checkPipState();
-        mHandler.postDelayed(this, CHECK_INTERVAL_MS);
+        mHandler.postDelayed(
+            this, mPipParams.externalStateMonitorInterval != null
+                      ? mPipParams.externalStateMonitorInterval.longValue()
+                      : CHECK_INTERVAL_MS);
       }
     };
     mHandler.post(mCheckStateTask);
   }
 
   private void stopStateMonitoring() {
-    mHandler.removeCallbacks(mCheckStateTask);
+    if (mHandler != null && mCheckStateTask != null) {
+      mHandler.removeCallbacks(mCheckStateTask);
+    }
   }
 
-  // since flutter do not delegate onPause and onPiPModeChanged and
-  // onPipStateChanged, we do not support auto enter pip on android for now
-  // private void onUserLeaveHint() {
-  //     if (!isSupported() || mPipParams == null) {
-  //         return;
-  //     }
+  @Override
+  public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode,
+                                            Configuration newConfig) {
+    if (Boolean.TRUE.equals(mPipParams.useExternalStateMonitor)) {
+      return;
+    }
 
-  //     // only call start when !isAutoEnterSupported() and autoEnterEnabled is
-  //     set to true if (Boolean.TRUE.equals(mPipParams.autoEnterEnabled) &&
-  //     !isAutoEnterSupported() && !isActived()) {
-  //         start();
-  //     }
-  // }
+    if (isInPictureInPictureMode) {
+      notifyPipStateChanged(PipState.Started);
+    } else {
+      notifyPipStateChanged(PipState.Stopped);
+    }
+  }
+
+  @Override
+  public boolean onPictureInPictureRequested() {
+    return false;
+  }
+
+  @Override
+  public void onPictureInPictureUiStateChanged(PictureInPictureUiState state) {
+    // do nothing for now
+  }
+
+  @Override
+  public void onUserLeaveHint() {
+    // Only need to handle auto enter pip for android version below 12
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+      if (Boolean.TRUE.equals(mPipParams.autoEnterEnabled)) {
+        start();
+      }
+    }
+  }
 }

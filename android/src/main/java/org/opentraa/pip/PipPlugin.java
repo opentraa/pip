@@ -69,8 +69,24 @@ public class PipPlugin
                                     (int)args.get("sourceRectHintRight"),
                                     (int)args.get("sourceRectHintBottom"));
         }
+        Boolean seamlessResizeEnabled = null;
+        if (args.get("seamlessResizeEnabled") != null) {
+          seamlessResizeEnabled = (boolean)args.get("seamlessResizeEnabled");
+        }
+        Boolean useExternalStateMonitor = null;
+        if (args.get("useExternalStateMonitor") != null) {
+          useExternalStateMonitor =
+              (boolean)args.get("useExternalStateMonitor");
+        }
+        Integer externalStateMonitorInterval = null;
+        if (args.get("externalStateMonitorInterval") != null) {
+          externalStateMonitorInterval =
+              (int)args.get("externalStateMonitorInterval");
+        }
         result.success(
-            pipController.setup(aspectRatio, autoEnterEnabled, sourceRectHint));
+            pipController.setup(aspectRatio, autoEnterEnabled, sourceRectHint,
+                                seamlessResizeEnabled, useExternalStateMonitor,
+                                externalStateMonitorInterval));
         break;
       case "start":
         result.success(pipController.start());
