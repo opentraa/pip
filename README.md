@@ -7,7 +7,7 @@ pip is a Flutter plugin that supports Picture in Picture (PiP) functionality for
 
 ![ios](assets/pip_ios.gif)
 
-Android is too simple to show, so I will not show it here.
+![android](assets/pip_android.gif)
 
 ## Installation
 Add the dependency in your `pubspec.yaml`:
@@ -110,7 +110,8 @@ await _pip.dispose();
 ### PipOptions
 ```dart
 PipOptions({
-  bool? autoEnterEnabled,      // Enable/disable auto-enter PiP mode
+  bool? autoEnterEnabled,      // Enable/disable auto-enter PiP mode (default: false)
+  
   // Android specific options
   int? aspectRatioX,          // Aspect ratio X value
   int? aspectRatioY,          // Aspect ratio Y value
@@ -118,6 +119,10 @@ PipOptions({
   int? sourceRectHintTop,     // Source rectangle top position
   int? sourceRectHintRight,   // Source rectangle right position
   int? sourceRectHintBottom,  // Source rectangle bottom position
+  bool? seamlessResizeEnabled, // Enable/disable seamless resize (default: false)
+  bool? useExternalStateMonitor, // Use external state monitor (default: false)
+  int? externalStateMonitorInterval, // External state monitor interval in milliseconds (default: 100)
+  
   // iOS specific options
   int? sourceContentView,      // Source content view
   int? contentView,           // Content view to be displayed in PiP
@@ -187,6 +192,10 @@ Future<void> unregisterStateChangedObserver()
 - Source rectangle hints help smooth transitions into PiP mode
 - `pipStop()` operation only switches the app to background
 - Ensure necessary permissions are declared in the app
+- Additional Android-specific features:
+  - `seamlessResizeEnabled`: Enable smooth resizing of PiP window
+  - `useExternalStateMonitor`: Use external thread to monitor PiP state
+  - `externalStateMonitorInterval`: Set monitoring interval in milliseconds
 
 ### iOS
 - Content view and dimension settings are iOS-specific
