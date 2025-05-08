@@ -1,4 +1,4 @@
-# 0.0.3
+## 0.0.3
 
 * Add seamless resize support for Android.
 * Add external state monitor support for Android.

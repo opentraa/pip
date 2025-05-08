@@ -371,9 +371,16 @@
 }
 
 - (void)restoreContentViewIfNeeded {
-  // only restore the content view if it is not nil and the original parent
-  // view is not nil and the content view is already in the original parent view
-  if (_contentView == nil || _contentViewOriginalParentView == nil ||
+  if (_contentView == nil) {
+    PIP_LOG(@"restoreContentViewIfNeeded: contentView is nil");
+    return;
+  }
+
+  // do not restore the content view if the original parent view is nil or
+  // the content view is already in the original parent view.
+  // keep the content view in the pip view controller will make the user
+  // experience better, the pip content view will be visible immediately.
+  if (_contentViewOriginalParentView == nil ||
       [_contentViewOriginalParentView.subviews containsObject:_contentView]) {
     PIP_LOG(
         @"restoreContentViewIfNeeded: _contentViewOriginalParentView is nil or "
@@ -386,33 +393,36 @@
       @"restoreContentViewIfNeeded: contentView is removed from the original "
       @"parent view");
 
-  // in case that the subviews of _contentViewOriginalParentView has been
-  // changed, we need to get the real index of the content view.
-  NSUInteger trueIndex = MIN(_contentViewOriginalParentView.subviews.count,
-                             _contentViewOriginalIndex);
-  [_contentViewOriginalParentView insertSubview:_contentView atIndex:trueIndex];
+  if (_contentViewOriginalParentView != nil) {
+    // in case that the subviews of _contentViewOriginalParentView has been
+    // changed, we need to get the real index of the content view.
+    NSUInteger trueIndex = MIN(_contentViewOriginalParentView.subviews.count,
+                               _contentViewOriginalIndex);
+    [_contentViewOriginalParentView insertSubview:_contentView
+                                          atIndex:trueIndex];
 
-  PIP_LOG(@"restoreContentViewIfNeeded: contentView is added to the original "
-          @"parent view "
-          @"at index: %lu",
-          trueIndex);
+    PIP_LOG(@"restoreContentViewIfNeeded: contentView is added to the original "
+            @"parent view "
+            @"at index: %lu",
+            trueIndex);
 
-  // restore the original frame
-  _contentView.frame = _contentViewOriginalFrame;
+    // restore the original frame
+    _contentView.frame = _contentViewOriginalFrame;
 
-  // restore the original constraints
-  [_contentView removeConstraints:_contentView.constraints.copy];
-  [_contentView addConstraints:_contentViewOriginalConstraints];
+    // restore the original constraints
+    [_contentView removeConstraints:_contentView.constraints.copy];
+    [_contentView addConstraints:_contentViewOriginalConstraints];
 
-  // restore the original translatesAutoresizingMaskIntoConstraints
-  _contentView.translatesAutoresizingMaskIntoConstraints =
-      _contentViewOriginalTranslatesAutoresizingMaskIntoConstraints;
+    // restore the original translatesAutoresizingMaskIntoConstraints
+    _contentView.translatesAutoresizingMaskIntoConstraints =
+        _contentViewOriginalTranslatesAutoresizingMaskIntoConstraints;
 
-  // restore the original parent view
-  [_contentViewOriginalParentView
-      removeConstraints:_contentViewOriginalParentView.constraints.copy];
-  [_contentViewOriginalParentView
-      addConstraints:_contentViewOriginalParentViewConstraints];
+    // restore the original parent view
+    [_contentViewOriginalParentView
+        removeConstraints:_contentViewOriginalParentView.constraints.copy];
+    [_contentViewOriginalParentView
+        addConstraints:_contentViewOriginalParentViewConstraints];
+  }
 }
 
 - (void)dispose {
@@ -484,6 +494,12 @@
     UIViewController *rootViewController = window.rootViewController;
     UIView *superview = rootViewController.view.superview;
     [self insertContentViewIfNeeded:superview];
+  } else {
+    PIP_LOG(
+        @"pictureInPictureControllerDidStartPictureInPicture: window is nil");
+    [_pipStateDelegate pipStateChanged:PipStateFailed
+                                 error:@"Can not find the pip window"];
+    return;
   }
 #endif
 
