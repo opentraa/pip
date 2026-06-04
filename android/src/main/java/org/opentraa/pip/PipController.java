@@ -2,7 +2,6 @@ package org.opentraa.pip;
 
 import android.app.Activity;
 import android.app.PictureInPictureParams;
-import android.app.PictureInPictureUiState;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.graphics.Rect;
@@ -12,7 +11,6 @@ import android.os.Looper;
 import android.util.Rational;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.annotation.RequiresApi;
 import java.lang.ref.WeakReference;
 import java.util.Objects;
 
@@ -355,11 +353,6 @@ public class PipController implements PipActivity.PipActivityListener {
   @Override
   public boolean onPictureInPictureRequested() {
     return false;
-  }
-
-  @Override
-  public void onPictureInPictureUiStateChanged(PictureInPictureUiState state) {
-    // do nothing for now
   }
 
   @Override
