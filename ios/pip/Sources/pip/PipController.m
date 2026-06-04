@@ -1,5 +1,5 @@
-#import "PipController.h"
-#import "PipView.h"
+#import "include/pip/PipController.h"
+#import "include/pip/PipView.h"
 #include <Foundation/Foundation.h>
 #include <objc/objc.h>
 
