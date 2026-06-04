@@ -107,13 +107,18 @@ public class PipPlugin
     }
   }
 
-  @Override
-  public void onDetachedFromEngine(@NonNull FlutterPluginBinding binding) {
-    channel.setMethodCallHandler(null);
-    if(pipController!=null){
-      pipController.dispose();
+@Override
+public void onDetachedFromEngine(@NonNull FlutterPluginBinding binding) {
+    if (channel != null) {
+        channel.setMethodCallHandler(null);
+        channel = null;
     }
-  }
+
+    if (pipController != null) {
+        pipController.dispose();
+        pipController = null;
+    }
+}
 
   private void initPipController(@NonNull ActivityPluginBinding binding) {
     if (pipController == null) {
