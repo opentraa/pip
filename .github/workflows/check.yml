@@ -24,3 +24,6 @@ jobs:
 
       - name: Run package checks
         run: ./scripts/check.sh
+
+      - name: Check Swift Package Manager support
+        run: ./scripts/check_spm.sh

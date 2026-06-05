@@ -1,4 +1,4 @@
-#import "PlayerView.h"
+#import "include/native_plugin/PlayerView.h"
 
 #import <AVKit/AVKit.h>
 

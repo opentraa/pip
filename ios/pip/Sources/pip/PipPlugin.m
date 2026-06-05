@@ -1,4 +1,4 @@
-#import "PipPlugin.h"
+#import "include/pip/PipPlugin.h"
 
 @interface PipPlugin ()
 

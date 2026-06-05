@@ -13,8 +13,8 @@ A new Flutter plugin project.
   s.license          = { :file => '../LICENSE' }
   s.author           = { 'Your Company' => 'email@example.com' }
   s.source           = { :path => '.' }
-  s.source_files = 'Classes/**/*'
-  s.public_header_files = 'Classes/**/*.h'
+  s.source_files = 'native_plugin/Sources/native_plugin/**/*.{h,m}'
+  s.public_header_files = 'native_plugin/Sources/native_plugin/include/**/*.h'
   s.dependency 'Flutter'
   s.platform = :ios, '12.0'
 
@@ -25,5 +25,5 @@ A new Flutter plugin project.
   # required reason APIs, update the PrivacyInfo.xcprivacy file to describe your
   # plugin's privacy impact, and then uncomment this line. For more information,
   # see https://developer.apple.com/documentation/bundleresources/privacy_manifest_files
-  # s.resource_bundles = {'native_plugin_privacy' => ['Resources/PrivacyInfo.xcprivacy']}
+  s.resource_bundles = {'native_plugin_privacy' => ['native_plugin/Sources/native_plugin/PrivacyInfo.xcprivacy']}
 end
