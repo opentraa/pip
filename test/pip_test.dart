@@ -54,6 +54,8 @@ class MockPipPlatform with MockPlatformInterfaceMixin implements PipPlatform {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   final initialPlatform = PipPlatform.instance;
 
   tearDown(() {
