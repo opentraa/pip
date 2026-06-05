@@ -27,3 +27,6 @@ jobs:
 
       - name: Check Swift Package Manager support
         run: ./scripts/check_spm.sh
+
+      - name: Check Android deprecated API usage
+        run: ./scripts/check_android_deprecated_api.sh
