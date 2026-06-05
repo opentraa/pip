@@ -68,8 +68,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     // which will make the PiP experience more seamless.
     
     // Initialize controllers with default values based on platform
-    final size = WidgetsBinding.instance.window.physicalSize;
-    final scale = WidgetsBinding.instance.window.devicePixelRatio;
+    final view = WidgetsBinding.instance.platformDispatcher.views.first;
+    final size = view.physicalSize;
+    final scale = view.devicePixelRatio;
     final width = size.width / scale;
     final height = size.height / scale;
     
@@ -125,7 +126,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   @override
   Future<void> didChangeAppLifecycleState(AppLifecycleState state) async {
     super.didChangeAppLifecycleState(state);
-    print("[didChangeAppLifecycleState]: $state");
+    debugPrint('[didChangeAppLifecycleState]: $state');
 
     if (state == AppLifecycleState.inactive) {
       // We recommend to set the autoEnterEnabled to true if the pip is auto enter supported not to call pipStart on inactive state.
@@ -174,19 +175,19 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     bool isPipActived = false;
     try {
       var platformVersion = await _nativePlugin.getPlatformVersion();
-      print('[platformVersion]: $platformVersion');
+      debugPrint('[platformVersion]: $platformVersion');
       pipIsSupported = await _pip.isSupported();
       pipIsAutoEnterSupported = await _pip.isAutoEnterSupported();
       isPipActived = await _pip.isActived();
       await _pip.registerStateChangedObserver(PipStateChangedObserver(
         onPipStateChanged: (state, error) {
-          print('[onPipStateChanged] state: $state, error: $error');
+          debugPrint('[onPipStateChanged] state: $state, error: $error');
           setState(() {
             _isPipActived = state == PipState.pipStateStarted;
           });
 
           if (state == PipState.pipStateFailed) {
-            print('[onPipStateChanged] state: $state, error: $error');
+            debugPrint('[onPipStateChanged] state: $state, error: $error');
             // if you destroy the source view of pip controller, some error may happen,
             // so we need to dispose the pip controller here.
             _pip.dispose();
@@ -218,7 +219,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     if (_formKey.currentState!.validate()) {
       if (Platform.isIOS && _pipContentView == 0) {
         _pipContentView = await _nativePlugin.createPipContentView();
-        print('[createPipContentView]: $_pipContentView');
+        debugPrint('[createPipContentView]: $_pipContentView');
 
         setState(() {
           _pipContentView = _pipContentView;
@@ -260,9 +261,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
       try {
         final success = await _pip.setup(options);
-        print('PiP Setup ${success ? 'successful' : 'failed'}');
+        debugPrint('PiP Setup ${success ? 'successful' : 'failed'}');
       } catch (e) {
-        print('PiP Setup error: $e');
+        debugPrint('PiP Setup error: $e');
       }
     }
   }
@@ -273,7 +274,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         height: 200,
         child: NativeWidget(
           onPlatformViewCreated: (id, internalViewId) {
-            print(
+            debugPrint(
                 'Platform view created: $id, internalViewId: $internalViewId');
             setState(() {
               _playerView = internalViewId;
@@ -299,15 +300,15 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                   height: imageHeight,
                   fit: BoxFit.contain,
                   errorBuilder: (context, error, stackTrace) {
-                    print('Error loading image: $error');
-                    print('Stack trace: $stackTrace');
+                    debugPrint('Error loading image: $error');
+                    debugPrint('Stack trace: $stackTrace');
                     return const Text('Error loading image');
                   },
                 );
               },
             );
           } catch (e) {
-            print('Exception while loading image: $e');
+            debugPrint('Exception while loading image: $e');
             return Text('Exception: $e');
           }
         },
@@ -402,9 +403,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             onPressed: () async {
               try {
                 final success = await _pip.start();
-                print('PiP Start ${success ? 'successful' : 'failed'}');
+                debugPrint('PiP Start ${success ? 'successful' : 'failed'}');
               } catch (e) {
-                print('PiP Start error: $e');
+                debugPrint('PiP Start error: $e');
               }
             },
             style: ElevatedButton.styleFrom(
@@ -418,9 +419,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             onPressed: () async {
               try {
                 await _pip.stop();
-                print('PiP Stopped');
+                debugPrint('PiP Stopped');
               } catch (e) {
-                print('PiP Stop error: $e');
+                debugPrint('PiP Stop error: $e');
               }
             },
             style: ElevatedButton.styleFrom(
@@ -433,9 +434,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           onPressed: () async {
             try {
               await _pip.dispose();
-              print('PiP Disposed');
+              debugPrint('PiP Disposed');
             } catch (e) {
-              print('PiP Dispose error: $e');
+              debugPrint('PiP Dispose error: $e');
             }
           },
           style: ElevatedButton.styleFrom(

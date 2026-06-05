@@ -7,9 +7,14 @@ import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 class MockNativePluginPlatform
     with MockPlatformInterfaceMixin
     implements NativePluginPlatform {
-
   @override
   Future<String?> getPlatformVersion() => Future.value('42');
+
+  @override
+  Future<int> createPipContentView() => Future.value(7);
+
+  @override
+  Future<void> disposePipContentView(int viewId) => Future.value();
 }
 
 void main() {
