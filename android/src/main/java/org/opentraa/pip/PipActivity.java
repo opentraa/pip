@@ -1,9 +1,7 @@
 package org.opentraa.pip;
 
-import android.app.PictureInPictureUiState;
 import android.content.res.Configuration;
 import android.os.Build;
-import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
 import io.flutter.embedding.android.FlutterActivity;
 
@@ -12,8 +10,6 @@ public class PipActivity extends FlutterActivity {
   public interface PipActivityListener {
     void onPictureInPictureModeChanged(boolean isInPictureInPictureMode,
                                        Configuration newConfig);
-
-    void onPictureInPictureUiStateChanged(PictureInPictureUiState state);
 
     boolean onPictureInPictureRequested();
 
@@ -46,17 +42,6 @@ public class PipActivity extends FlutterActivity {
       return mListener.onPictureInPictureRequested();
     }
     return super.onPictureInPictureRequested();
-  }
-
-  // only available in API level 31 and above
-  @RequiresApi(31)
-  @Override
-  public void
-  onPictureInPictureUiStateChanged(@NonNull PictureInPictureUiState state) {
-    super.onPictureInPictureUiStateChanged(state);
-    if (mListener != null) {
-      mListener.onPictureInPictureUiStateChanged(state);
-    }
   }
 
   @Override
