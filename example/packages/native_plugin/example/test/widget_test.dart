@@ -1,4 +1,5 @@
 // This is a basic Flutter widget test.
+// ignore_for_file: avoid_relative_lib_imports
 //
 // To perform an interaction with a widget in your test, use the WidgetTester
 // utility in the flutter_test package. For example, you can send tap and scroll
