@@ -1,1 +1,19 @@
-test
+test/
+
+# Local build and tool state should never be part of the published package.
+.dart_tool/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+
+# Generated example app state.
+example/.dart_tool/
+example/build/
+example/ios/Podfile
+example/ios/Flutter/Generated.xcconfig
+example/ios/Flutter/flutter_export_environment.sh
+example/ios/Flutter/ephemeral/
+example/ios/Runner.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
+example/packages/native_plugin/example/.dart_tool/
+example/packages/native_plugin/example/build/
