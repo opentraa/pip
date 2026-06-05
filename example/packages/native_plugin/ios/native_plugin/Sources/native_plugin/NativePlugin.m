@@ -1,6 +1,6 @@
-#import "NativePlugin.h"
-#import "FLNativeView.h"
-#import "PlayerView.h"
+#import "include/native_plugin/NativePlugin.h"
+#import "include/native_plugin/FLNativeView.h"
+#import "include/native_plugin/PlayerView.h"
 
 #import <AVKit/AVKit.h>
 

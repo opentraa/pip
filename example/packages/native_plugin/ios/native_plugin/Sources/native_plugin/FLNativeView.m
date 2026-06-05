@@ -1,5 +1,5 @@
-#import "FLNativeView.h"
-#import "PlayerView.h"
+#import "include/native_plugin/FLNativeView.h"
+#import "include/native_plugin/PlayerView.h"
 
 @implementation FLNativeViewFactory {
   NSObject<FlutterBinaryMessenger> *_messenger;
