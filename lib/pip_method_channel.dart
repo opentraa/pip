@@ -18,21 +18,29 @@ class MethodChannelPip extends PipPlatform {
   }
 
   Future<void> _handleMethod(MethodCall call) async {
-    try {
-      if (call.method == 'stateChanged') {
-        final jsonMap = Map<String, dynamic>.from(call.arguments as Map);
-        final state = jsonMap['state'] as int;
-        final error = jsonMap['error'] as String?;
-        _stateChangedObserver?.onPipStateChanged(PipState.values[state], error);
-      }
-    } catch (e) {
-      assert(false, 'stateChanged error: $e');
+    if (call.method != 'stateChanged') {
+      return;
     }
+
+    final arguments = call.arguments;
+    if (arguments is! Map) {
+      return;
+    }
+
+    final jsonMap = Map<Object?, Object?>.from(arguments);
+    final state = PipState.fromNative(jsonMap['state']);
+    final error = jsonMap['error'];
+    if (state == null || (error != null && error is! String)) {
+      return;
+    }
+
+    _stateChangedObserver?.onPipStateChanged(state, error as String?);
   }
 
   @override
   Future<void> registerStateChangedObserver(
-      PipStateChangedObserver observer) async {
+    PipStateChangedObserver observer,
+  ) async {
     _stateChangedObserver = observer;
   }
 
@@ -49,8 +57,10 @@ class MethodChannelPip extends PipPlatform {
 
   @override
   Future<bool> isAutoEnterSupported() async {
-    final result =
-        await methodChannel.invokeMethod<bool>('isAutoEnterSupported', null);
+    final result = await methodChannel.invokeMethod<bool>(
+      'isAutoEnterSupported',
+      null,
+    );
     return result ?? false;
   }
 
