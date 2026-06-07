@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pip/pip_platform_interface.dart';
@@ -40,6 +41,7 @@ void main() {
   tearDown(() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, null);
+    debugDefaultTargetPlatformOverride = null;
   });
 
   test('forwards platform method calls to the native channel', () async {
@@ -119,6 +121,131 @@ void main() {
       expect(arguments['controlStyle'], 2);
       expect(arguments.containsKey('aspectRatioX'), isFalse);
     }
+  });
+
+  test('rejects incomplete Android aspect ratio options', () {
+    withTargetPlatform(TargetPlatform.android, () {
+      expect(
+        () => const PipOptions(aspectRatioX: 16).toDictionary(),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
+  });
+
+  test('rejects invalid Android aspect ratio options', () {
+    withTargetPlatform(TargetPlatform.android, () {
+      expect(
+        () =>
+            const PipOptions(aspectRatioX: 16, aspectRatioY: 0).toDictionary(),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
+  });
+
+  test('rejects incomplete Android source rect hint options', () {
+    withTargetPlatform(TargetPlatform.android, () {
+      expect(
+        () => const PipOptions(
+          sourceRectHintLeft: 1,
+          sourceRectHintTop: 2,
+          sourceRectHintRight: 3,
+        ).toDictionary(),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
+  });
+
+  test('rejects invalid Android source rect hint bounds', () {
+    withTargetPlatform(TargetPlatform.android, () {
+      expect(
+        () => const PipOptions(
+          sourceRectHintLeft: 3,
+          sourceRectHintTop: 2,
+          sourceRectHintRight: 1,
+          sourceRectHintBottom: 4,
+        ).toDictionary(),
+        throwsA(isA<ArgumentError>()),
+      );
+      expect(
+        () => const PipOptions(
+          sourceRectHintLeft: 1,
+          sourceRectHintTop: 4,
+          sourceRectHintRight: 3,
+          sourceRectHintBottom: 2,
+        ).toDictionary(),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
+  });
+
+  test('allows empty Android source rect hint bounds', () {
+    withTargetPlatform(TargetPlatform.android, () {
+      expect(
+        const PipOptions(
+          sourceRectHintLeft: 0,
+          sourceRectHintTop: 0,
+          sourceRectHintRight: 0,
+          sourceRectHintBottom: 0,
+        ).toDictionary(),
+        allOf(
+          containsPair('sourceRectHintLeft', 0),
+          containsPair('sourceRectHintTop', 0),
+          containsPair('sourceRectHintRight', 0),
+          containsPair('sourceRectHintBottom', 0),
+        ),
+      );
+    });
+  });
+
+  test('rejects invalid external state monitor interval', () {
+    withTargetPlatform(TargetPlatform.android, () {
+      expect(
+        () => const PipOptions(externalStateMonitorInterval: 0).toDictionary(),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
+  });
+
+  test('rejects invalid iOS preferred content dimensions', () {
+    withTargetPlatform(TargetPlatform.iOS, () {
+      expect(
+        () => const PipOptions(preferredContentWidth: 0).toDictionary(),
+        throwsA(isA<ArgumentError>()),
+      );
+      expect(
+        () => const PipOptions(preferredContentHeight: -1).toDictionary(),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
+  });
+
+  test('rejects invalid iOS control style', () {
+    withTargetPlatform(TargetPlatform.iOS, () {
+      expect(
+        () => const PipOptions(controlStyle: -1).toDictionary(),
+        throwsA(isA<ArgumentError>()),
+      );
+      expect(
+        () => const PipOptions(controlStyle: 4).toDictionary(),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
+  });
+
+  test('ignores invalid options for inactive platforms', () {
+    withTargetPlatform(TargetPlatform.iOS, () {
+      expect(
+        const PipOptions(aspectRatioX: 16).toDictionary(),
+        isNot(contains('aspectRatioX')),
+      );
+    });
+
+    withTargetPlatform(TargetPlatform.android, () {
+      expect(
+        const PipOptions(controlStyle: 4).toDictionary(),
+        isNot(contains('controlStyle')),
+      );
+    });
   });
 
   test('notifies registered observers when native state changes', () async {
@@ -335,4 +462,14 @@ void main() {
       expect(receivedState, PipState.pipStateStopped);
     },
   );
+}
+
+void withTargetPlatform(TargetPlatform platform, void Function() body) {
+  final previousPlatform = debugDefaultTargetPlatformOverride;
+  debugDefaultTargetPlatformOverride = platform;
+  try {
+    body();
+  } finally {
+    debugDefaultTargetPlatformOverride = previousPlatform;
+  }
 }
