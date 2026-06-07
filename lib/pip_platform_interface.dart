@@ -111,9 +111,13 @@ class PipOptions {
       writePropertyIfNotNull('sourceRectHintBottom', sourceRectHintBottom);
       writePropertyIfNotNull('seamlessResizeEnabled', seamlessResizeEnabled);
       writePropertyIfNotNull(
-          'useExternalStateMonitor', useExternalStateMonitor);
+        'useExternalStateMonitor',
+        useExternalStateMonitor,
+      );
       writePropertyIfNotNull(
-          'externalStateMonitorInterval', externalStateMonitorInterval);
+        'externalStateMonitorInterval',
+        externalStateMonitorInterval,
+      );
     }
 
     // only for ios
@@ -137,14 +141,48 @@ enum PipState {
   pipStateStopped,
 
   /// The Picture in Picture is failed.
-  pipStateFailed,
+  pipStateFailed;
+
+  /// Stable native wire protocol code for this state.
+  String get code {
+    switch (this) {
+      case PipState.pipStateStarted:
+        return 'started';
+      case PipState.pipStateStopped:
+        return 'stopped';
+      case PipState.pipStateFailed:
+        return 'failed';
+    }
+  }
+
+  /// Parses native wire protocol values into [PipState].
+  ///
+  /// String values are the stable protocol. Integer values are accepted for
+  /// backward compatibility with older native implementations.
+  static PipState? fromNative(Object? value) {
+    if (value is String) {
+      switch (value) {
+        case 'started':
+          return PipState.pipStateStarted;
+        case 'stopped':
+          return PipState.pipStateStopped;
+        case 'failed':
+          return PipState.pipStateFailed;
+      }
+      return null;
+    }
+
+    if (value is int && value >= 0 && value < PipState.values.length) {
+      return PipState.values[value];
+    }
+
+    return null;
+  }
 }
 
 class PipStateChangedObserver {
   /// The observer of the Picture in Picture state changed.
-  const PipStateChangedObserver({
-    required this.onPipStateChanged,
-  });
+  const PipStateChangedObserver({required this.onPipStateChanged});
 
   /// The callback of the Picture in Picture state changed.
   final void Function(PipState state, String? error) onPipStateChanged;
@@ -175,15 +213,18 @@ abstract class PipPlatform extends PlatformInterface {
   ///
   /// [observer] The Picture in Picture state change observer.
   Future<void> registerStateChangedObserver(
-      PipStateChangedObserver observer) async {
+    PipStateChangedObserver observer,
+  ) async {
     throw UnimplementedError(
-        'registerStateChangedObserver() has not been implemented.');
+      'registerStateChangedObserver() has not been implemented.',
+    );
   }
 
   /// Unregisters a Picture in Picture state change observer.
   Future<void> unregisterStateChangedObserver() async {
     throw UnimplementedError(
-        'unregisterStateChangedObserver() has not been implemented.');
+      'unregisterStateChangedObserver() has not been implemented.',
+    );
   }
 
   /// Check if Picture in Picture is supported.
@@ -200,7 +241,8 @@ abstract class PipPlatform extends PlatformInterface {
   /// Whether Picture in Picture can auto enter.
   Future<bool> isAutoEnterSupported() async {
     throw UnimplementedError(
-        'isAutoEnterSupported() has not been implemented.');
+      'isAutoEnterSupported() has not been implemented.',
+    );
   }
 
   /// Check if Picture in Picture is actived.

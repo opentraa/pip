@@ -26,6 +26,19 @@ public class PipPlugin
   /// The controller for the PiP feature
   private PipController pipController;
 
+  private String toStateCode(PipController.PipState state) {
+    switch (state) {
+    case Started:
+      return "started";
+    case Stopped:
+      return "stopped";
+    case Failed:
+      return "failed";
+    default:
+      return "unknown";
+    }
+  }
+
   @Override
   public void
   onAttachedToEngine(@NonNull FlutterPluginBinding flutterPluginBinding) {
@@ -130,7 +143,7 @@ public void onDetachedFromEngine(@NonNull FlutterPluginBinding binding) {
               // put state into a json object
               channel.invokeMethod("stateChanged",
                                    new HashMap<String, Object>() {
-                                     { put("state", state.getValue()); }
+                                     { put("state", toStateCode(state)); }
                                    });
             }
           });

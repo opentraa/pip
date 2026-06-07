@@ -94,10 +94,24 @@
 }
 
 - (void)pipStateChanged:(PipState)state error:(NSString *)error {
-  NSDictionary *arguments = [[NSDictionary alloc]
-      initWithObjectsAndKeys:[NSNumber numberWithLong:(long)state], @"state",
-                             error, @"error", nil];
+  NSMutableDictionary *arguments =
+      [@{@"state" : [self stateCode:state]} mutableCopy];
+  if (error != nil) {
+    arguments[@"error"] = error;
+  }
   [self.channel invokeMethod:@"stateChanged" arguments:arguments];
+}
+
+- (NSString *)stateCode:(PipState)state {
+  switch (state) {
+  case PipStateStarted:
+    return @"started";
+  case PipStateStopped:
+    return @"stopped";
+  case PipStateFailed:
+    return @"failed";
+  }
+  return @"unknown";
 }
 
 @end

@@ -17,24 +17,24 @@ void main() {
     methodCalls = <MethodCall>[];
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-      methodCalls.add(methodCall);
-      switch (methodCall.method) {
-        case 'isSupported':
-        case 'isAutoEnterSupported':
-        case 'setup':
-        case 'start':
-          return true;
-        case 'isActived':
-          return false;
-        case 'getPipView':
-          return 123;
-        case 'stop':
-        case 'dispose':
-          return null;
-        default:
-          throw PlatformException(code: 'unimplemented');
-      }
-    });
+          methodCalls.add(methodCall);
+          switch (methodCall.method) {
+            case 'isSupported':
+            case 'isAutoEnterSupported':
+            case 'setup':
+            case 'start':
+              return true;
+            case 'isActived':
+              return false;
+            case 'getPipView':
+              return 123;
+            case 'stop':
+            case 'dispose':
+              return null;
+            default:
+              throw PlatformException(code: 'unimplemented');
+          }
+        });
   });
 
   tearDown(() {
@@ -46,24 +46,23 @@ void main() {
     expect(await platform.isSupported(), isTrue);
     expect(await platform.isAutoEnterSupported(), isTrue);
     expect(await platform.isActived(), isFalse);
-    expect(await platform.setup(const PipOptions(autoEnterEnabled: true)),
-        isTrue);
+    expect(
+      await platform.setup(const PipOptions(autoEnterEnabled: true)),
+      isTrue,
+    );
     expect(await platform.start(), isTrue);
     await platform.stop();
     await platform.dispose();
 
-    expect(
-      methodCalls.map((call) => call.method),
-      <String>[
-        'isSupported',
-        'isAutoEnterSupported',
-        'isActived',
-        'setup',
-        'start',
-        'stop',
-        'dispose',
-      ],
-    );
+    expect(methodCalls.map((call) => call.method), <String>[
+      'isSupported',
+      'isAutoEnterSupported',
+      'isActived',
+      'setup',
+      'start',
+      'stop',
+      'dispose',
+    ]);
   });
 
   test('returns a native PiP view pointer on iOS only', () async {
@@ -77,26 +76,27 @@ void main() {
   });
 
   test('serializes setup options for the active platform', () async {
-    await platform.setup(const PipOptions(
-      autoEnterEnabled: true,
-      aspectRatioX: 16,
-      aspectRatioY: 9,
-      sourceRectHintLeft: 1,
-      sourceRectHintTop: 2,
-      sourceRectHintRight: 3,
-      sourceRectHintBottom: 4,
-      seamlessResizeEnabled: true,
-      useExternalStateMonitor: true,
-      externalStateMonitorInterval: 100,
-      sourceContentView: 10,
-      contentView: 11,
-      preferredContentWidth: 200,
-      preferredContentHeight: 100,
-      controlStyle: 2,
-    ));
+    await platform.setup(
+      const PipOptions(
+        autoEnterEnabled: true,
+        aspectRatioX: 16,
+        aspectRatioY: 9,
+        sourceRectHintLeft: 1,
+        sourceRectHintTop: 2,
+        sourceRectHintRight: 3,
+        sourceRectHintBottom: 4,
+        seamlessResizeEnabled: true,
+        useExternalStateMonitor: true,
+        externalStateMonitorInterval: 100,
+        sourceContentView: 10,
+        contentView: 11,
+        preferredContentWidth: 200,
+        preferredContentHeight: 100,
+        controlStyle: 2,
+      ),
+    );
 
-    final setupCall =
-        methodCalls.singleWhere((call) => call.method == 'setup');
+    final setupCall = methodCalls.singleWhere((call) => call.method == 'setup');
     final arguments = Map<String, Object?>.from(setupCall.arguments as Map);
 
     expect(arguments['autoEnterEnabled'], isTrue);
@@ -135,17 +135,204 @@ void main() {
 
     await TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .handlePlatformMessage(
-      'pip',
-      channel.codec.encodeMethodCall(
-        const MethodCall('stateChanged', <String, Object?>{
-          'state': 2,
-          'error': 'Pip is not possible',
-        }),
-      ),
-      (_) {},
-    );
+          'pip',
+          channel.codec.encodeMethodCall(
+            const MethodCall('stateChanged', <String, Object?>{
+              'state': 2,
+              'error': 'Pip is not possible',
+            }),
+          ),
+          (_) {},
+        );
 
     expect(receivedState, PipState.pipStateFailed);
     expect(receivedError, 'Pip is not possible');
   });
+
+  test('accepts stable native state code strings', () async {
+    final expectedStates = <String, PipState>{
+      'started': PipState.pipStateStarted,
+      'stopped': PipState.pipStateStopped,
+      'failed': PipState.pipStateFailed,
+    };
+
+    for (final entry in expectedStates.entries) {
+      PipState? receivedState;
+      await platform.registerStateChangedObserver(
+        PipStateChangedObserver(
+          onPipStateChanged: (state, _) {
+            receivedState = state;
+          },
+        ),
+      );
+
+      await TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .handlePlatformMessage(
+            'pip',
+            channel.codec.encodeMethodCall(
+              MethodCall('stateChanged', <String, Object?>{'state': entry.key}),
+            ),
+            (_) {},
+          );
+
+      expect(receivedState, entry.value);
+    }
+  });
+
+  test(
+    'ignores unknown native state code strings without notifying observers',
+    () async {
+      var callbackCount = 0;
+      await platform.registerStateChangedObserver(
+        PipStateChangedObserver(
+          onPipStateChanged: (_, __) {
+            callbackCount += 1;
+          },
+        ),
+      );
+
+      await TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .handlePlatformMessage(
+            'pip',
+            channel.codec.encodeMethodCall(
+              const MethodCall('stateChanged', <String, Object?>{
+                'state': 'unknown',
+              }),
+            ),
+            (_) {},
+          );
+
+      expect(callbackCount, 0);
+    },
+  );
+
+  test(
+    'ignores invalid native state payloads without notifying observers',
+    () async {
+      var callbackCount = 0;
+      await platform.registerStateChangedObserver(
+        PipStateChangedObserver(
+          onPipStateChanged: (_, __) {
+            callbackCount += 1;
+          },
+        ),
+      );
+
+      await TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .handlePlatformMessage(
+            'pip',
+            channel.codec.encodeMethodCall(
+              const MethodCall('stateChanged', <String, Object?>{
+                'state': 'not-a-valid-state',
+                'error': 123,
+              }),
+            ),
+            (_) {},
+          );
+
+      expect(callbackCount, 0);
+    },
+  );
+
+  test(
+    'ignores non-map native state payloads without notifying observers',
+    () async {
+      var callbackCount = 0;
+      await platform.registerStateChangedObserver(
+        PipStateChangedObserver(
+          onPipStateChanged: (_, __) {
+            callbackCount += 1;
+          },
+        ),
+      );
+
+      await TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .handlePlatformMessage(
+            'pip',
+            channel.codec.encodeMethodCall(
+              const MethodCall('stateChanged', 'started'),
+            ),
+            (_) {},
+          );
+
+      expect(callbackCount, 0);
+    },
+  );
+
+  test('ignores unknown native methods without notifying observers', () async {
+    var callbackCount = 0;
+    await platform.registerStateChangedObserver(
+      PipStateChangedObserver(
+        onPipStateChanged: (_, __) {
+          callbackCount += 1;
+        },
+      ),
+    );
+
+    await TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .handlePlatformMessage(
+          'pip',
+          channel.codec.encodeMethodCall(
+            const MethodCall('unknownMethod', <String, Object?>{
+              'state': 'started',
+            }),
+          ),
+          (_) {},
+        );
+
+    expect(callbackCount, 0);
+  });
+
+  test(
+    'ignores non-string native state errors without notifying observers',
+    () async {
+      var callbackCount = 0;
+      await platform.registerStateChangedObserver(
+        PipStateChangedObserver(
+          onPipStateChanged: (_, __) {
+            callbackCount += 1;
+          },
+        ),
+      );
+
+      await TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .handlePlatformMessage(
+            'pip',
+            channel.codec.encodeMethodCall(
+              const MethodCall('stateChanged', <String, Object?>{
+                'state': 'failed',
+                'error': 123,
+              }),
+            ),
+            (_) {},
+          );
+
+      expect(callbackCount, 0);
+    },
+  );
+
+  test(
+    'keeps backward compatibility with legacy native state indexes',
+    () async {
+      PipState? receivedState;
+      await platform.registerStateChangedObserver(
+        PipStateChangedObserver(
+          onPipStateChanged: (state, _) {
+            receivedState = state;
+          },
+        ),
+      );
+
+      await TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .handlePlatformMessage(
+            'pip',
+            channel.codec.encodeMethodCall(
+              const MethodCall('stateChanged', <String, Object?>{'state': 1}),
+            ),
+            (_) {},
+          );
+
+      expect(receivedState, PipState.pipStateStopped);
+    },
+  );
 }
