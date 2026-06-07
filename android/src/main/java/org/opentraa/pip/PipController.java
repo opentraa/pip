@@ -138,6 +138,18 @@ public class PipController implements PipActivity.PipActivityListener {
 
   public void attachToActivity(@NonNull Activity activity) {
     setActivity(activity);
+    startStateMonitoring();
+  }
+
+  public void detachFromActivity() {
+    stopStateMonitoring();
+    Activity activity = mActivity != null ? mActivity.get() : null;
+    if (activity instanceof PipActivity) {
+      ((PipActivity)activity).setPipActivityListener(null);
+    }
+    mActivity = new WeakReference<Activity>(null);
+    mIsSupported = false;
+    mIsAutoEnterSupported = false;
   }
 
   public boolean isSupported() { return mIsSupported; }
@@ -300,6 +312,10 @@ public class PipController implements PipActivity.PipActivityListener {
   }
 
   private void startStateMonitoring() {
+    if (mPipParams == null) {
+      return;
+    }
+
     // Do not need to monitor the pip state with external thread when the
     // activity is kind of PipActivity and the external state monitor is
     // not enabled
@@ -334,20 +350,19 @@ public class PipController implements PipActivity.PipActivityListener {
     if (mHandler != null && mCheckStateTask != null) {
       mHandler.removeCallbacks(mCheckStateTask);
     }
+    mCheckStateTask = null;
   }
 
   @Override
   public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode,
                                             Configuration newConfig) {
-    if (Boolean.TRUE.equals(mPipParams.useExternalStateMonitor)) {
+    if (mPipParams == null ||
+        Boolean.TRUE.equals(mPipParams.useExternalStateMonitor)) {
       return;
     }
 
-    if (isInPictureInPictureMode) {
-      notifyPipStateChanged(PipState.Started);
-    } else {
-      notifyPipStateChanged(PipState.Stopped);
-    }
+    notifyPipStateChanged(isInPictureInPictureMode ? PipState.Started
+                                                   : PipState.Stopped);
   }
 
   @Override
@@ -357,6 +372,10 @@ public class PipController implements PipActivity.PipActivityListener {
 
   @Override
   public void onUserLeaveHint() {
+    if (mPipParams == null) {
+      return;
+    }
+
     // Only need to handle auto enter pip for android version below 12
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
       if (Boolean.TRUE.equals(mPipParams.autoEnterEnabled)) {
