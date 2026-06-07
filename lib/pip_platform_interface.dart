@@ -196,6 +196,13 @@ class PipOptions {
   }
 
   void _validateIosOptions() {
+    final hasPreferredContentWidth = preferredContentWidth != null;
+    final hasPreferredContentHeight = preferredContentHeight != null;
+    if (hasPreferredContentWidth != hasPreferredContentHeight) {
+      throw ArgumentError(
+        'preferredContentWidth and preferredContentHeight must be provided together.',
+      );
+    }
     if (preferredContentWidth != null && preferredContentWidth! <= 0) {
       throw ArgumentError.value(preferredContentWidth, 'preferredContentWidth');
     }
