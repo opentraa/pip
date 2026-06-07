@@ -47,7 +47,7 @@ bool isPipSupported = await _pip.isSupported();
 bool isPipAutoEnterSupported = await _pip.isAutoEnterSupported();
 
 // Check if currently in PiP mode
-bool isPipActived = await _pip.isActived();
+bool isPipActive = await _pip.isActive();
 ```
 
 ### 2. PiP Configuration
@@ -156,6 +156,9 @@ Future<bool> isSupported()
 Future<bool> isAutoEnterSupported()
 
 // Check if PiP is currently active
+Future<bool> isActive()
+
+// Deprecated: use isActive() in new code
 Future<bool> isActived()
 ```
 

@@ -12,7 +12,8 @@ class MockPipPlatform with MockPlatformInterfaceMixin implements PipPlatform {
 
   @override
   Future<void> registerStateChangedObserver(
-      PipStateChangedObserver observer) async {
+    PipStateChangedObserver observer,
+  ) async {
     this.observer = observer;
   }
 
@@ -28,7 +29,10 @@ class MockPipPlatform with MockPlatformInterfaceMixin implements PipPlatform {
   Future<bool> isAutoEnterSupported() async => true;
 
   @override
-  Future<bool> isActived() async => false;
+  Future<bool> isActive() async => false;
+
+  @override
+  Future<bool> isActived() async => true;
 
   @override
   Future<bool> setup(PipOptions options) async {
@@ -78,6 +82,8 @@ void main() {
 
     expect(await pip.isSupported(), isTrue);
     expect(await pip.isAutoEnterSupported(), isTrue);
+    expect(await pip.isActive(), isFalse);
+    // ignore: deprecated_member_use_from_same_package
     expect(await pip.isActived(), isFalse);
     expect(await pip.setup(const PipOptions(autoEnterEnabled: true)), isTrue);
     expect(fakePlatform.lastOptions?.autoEnterEnabled, isTrue);

@@ -47,7 +47,9 @@ void main() {
   test('forwards platform method calls to the native channel', () async {
     expect(await platform.isSupported(), isTrue);
     expect(await platform.isAutoEnterSupported(), isTrue);
+    // ignore: deprecated_member_use_from_same_package
     expect(await platform.isActived(), isFalse);
+    expect(await platform.isActive(), isFalse);
     expect(
       await platform.setup(const PipOptions(autoEnterEnabled: true)),
       isTrue,
@@ -59,6 +61,7 @@ void main() {
     expect(methodCalls.map((call) => call.method), <String>[
       'isSupported',
       'isAutoEnterSupported',
+      'isActived',
       'isActived',
       'setup',
       'start',
