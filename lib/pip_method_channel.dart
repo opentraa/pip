@@ -65,9 +65,14 @@ class MethodChannelPip extends PipPlatform {
   }
 
   @override
-  Future<bool> isActived() async {
+  Future<bool> isActive() async {
     final result = await methodChannel.invokeMethod<bool>('isActived', null);
     return result ?? false;
+  }
+
+  @override
+  Future<bool> isActived() async {
+    return isActive();
   }
 
   @override

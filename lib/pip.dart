@@ -5,7 +5,8 @@ export 'pip_platform_interface.dart'
 
 class Pip {
   Future<void> registerStateChangedObserver(
-      PipStateChangedObserver observer) async {
+    PipStateChangedObserver observer,
+  ) async {
     return PipPlatform.instance.registerStateChangedObserver(observer);
   }
 
@@ -30,12 +31,21 @@ class Pip {
     return PipPlatform.instance.isAutoEnterSupported();
   }
 
-  /// Check if Picture in Picture is actived.
+  /// Check if Picture in Picture is active.
   ///
   /// Returns
-  /// Whether Picture in Picture is actived.
+  /// Whether Picture in Picture is active.
+  Future<bool> isActive() async {
+    return PipPlatform.instance.isActive();
+  }
+
+  /// Check if Picture in Picture is active.
+  ///
+  /// Returns
+  /// Whether Picture in Picture is active.
+  @Deprecated('Use isActive instead.')
   Future<bool> isActived() async {
-    return PipPlatform.instance.isActived();
+    return PipPlatform.instance.isActive();
   }
 
   /// Setup or update Picture in Picture.

@@ -332,10 +332,20 @@ abstract class PipPlatform extends PlatformInterface {
     );
   }
 
-  /// Check if Picture in Picture is actived.
+  /// Check if Picture in Picture is active.
   ///
   /// Returns
-  /// Whether Picture in Picture is actived.
+  /// Whether Picture in Picture is active.
+  Future<bool> isActive() async {
+    // ignore: deprecated_member_use_from_same_package
+    return isActived();
+  }
+
+  /// Check if Picture in Picture is active.
+  ///
+  /// Returns
+  /// Whether Picture in Picture is active.
+  @Deprecated('Use isActive instead.')
   Future<bool> isActived() async {
     throw UnimplementedError('isActived() has not been implemented.');
   }

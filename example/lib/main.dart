@@ -64,19 +64,21 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
 
-    // We highly recommend to set the aspect ratio or preferred width and height based on the screen size, 
+    // We highly recommend to set the aspect ratio or preferred width and height based on the screen size,
     // which will make the PiP experience more seamless.
-    
+
     // Initialize controllers with default values based on platform
     final view = WidgetsBinding.instance.platformDispatcher.views.first;
     final size = view.physicalSize;
     final scale = view.devicePixelRatio;
     final width = size.width / scale;
     final height = size.height / scale;
-    
+
     if (Platform.isIOS) {
-      _aspectRatioXController = TextEditingController(text: width.toStringAsFixed(0));
-      _aspectRatioYController = TextEditingController(text: height.toStringAsFixed(0));
+      _aspectRatioXController =
+          TextEditingController(text: width.toStringAsFixed(0));
+      _aspectRatioYController =
+          TextEditingController(text: height.toStringAsFixed(0));
     } else {
       // Find the simplest ratio that matches the aspect ratio
       int gcd(int a, int b) {
@@ -87,15 +89,15 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         }
         return a;
       }
-      
+
       final divisor = gcd(width.toInt(), height.toInt());
       final x = (width / divisor).round();
       final y = (height / divisor).round();
-      
+
       _aspectRatioXController = TextEditingController(text: x.toString());
       _aspectRatioYController = TextEditingController(text: y.toString());
     }
-    
+
     initPlatformState();
     if (Platform.isAndroid) {
       _startImageTimer();
@@ -178,7 +180,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       debugPrint('[platformVersion]: $platformVersion');
       pipIsSupported = await _pip.isSupported();
       pipIsAutoEnterSupported = await _pip.isAutoEnterSupported();
-      isPipActived = await _pip.isActived();
+      isPipActived = await _pip.isActive();
       await _pip.registerStateChangedObserver(PipStateChangedObserver(
         onPipStateChanged: (state, error) {
           debugPrint('[onPipStateChanged] state: $state, error: $error');
@@ -293,7 +295,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 final size = MediaQuery.of(context).size;
                 final imageWidth = size.width;
                 final imageHeight = size.height;
-                
+
                 return Image.asset(
                   _imagePaths[_currentImageIndex],
                   width: imageWidth,
