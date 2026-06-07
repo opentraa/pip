@@ -91,6 +91,9 @@ class PipOptions {
 
   /// Convert the options to a dictionary.
   Map<String, dynamic> toDictionary() {
+    final targetPlatform = defaultTargetPlatform;
+    _validate(targetPlatform);
+
     final val = <String, dynamic>{};
 
     void writePropertyIfNotNull(String key, dynamic value) {
@@ -102,7 +105,7 @@ class PipOptions {
     writePropertyIfNotNull('autoEnterEnabled', autoEnterEnabled);
 
     // only for android
-    if (defaultTargetPlatform == TargetPlatform.android) {
+    if (targetPlatform == TargetPlatform.android) {
       writePropertyIfNotNull('aspectRatioX', aspectRatioX);
       writePropertyIfNotNull('aspectRatioY', aspectRatioY);
       writePropertyIfNotNull('sourceRectHintLeft', sourceRectHintLeft);
@@ -121,7 +124,7 @@ class PipOptions {
     }
 
     // only for ios
-    if (defaultTargetPlatform == TargetPlatform.iOS) {
+    if (targetPlatform == TargetPlatform.iOS) {
       writePropertyIfNotNull('sourceContentView', sourceContentView);
       writePropertyIfNotNull('contentView', contentView);
       writePropertyIfNotNull('preferredContentWidth', preferredContentWidth);
@@ -129,6 +132,90 @@ class PipOptions {
       writePropertyIfNotNull('controlStyle', controlStyle);
     }
     return val;
+  }
+
+  void _validate(TargetPlatform targetPlatform) {
+    if (targetPlatform == TargetPlatform.android) {
+      _validateAndroidOptions();
+    }
+    if (targetPlatform == TargetPlatform.iOS) {
+      _validateIosOptions();
+    }
+  }
+
+  void _validateAndroidOptions() {
+    final hasAspectRatioX = aspectRatioX != null;
+    final hasAspectRatioY = aspectRatioY != null;
+    if (hasAspectRatioX != hasAspectRatioY) {
+      throw ArgumentError(
+        'aspectRatioX and aspectRatioY must be provided together.',
+      );
+    }
+    if (aspectRatioX != null && aspectRatioX! <= 0) {
+      throw ArgumentError.value(aspectRatioX, 'aspectRatioX');
+    }
+    if (aspectRatioY != null && aspectRatioY! <= 0) {
+      throw ArgumentError.value(aspectRatioY, 'aspectRatioY');
+    }
+
+    final rectValues = <int?>[
+      sourceRectHintLeft,
+      sourceRectHintTop,
+      sourceRectHintRight,
+      sourceRectHintBottom,
+    ];
+    final rectValueCount = rectValues.where((value) => value != null).length;
+    if (rectValueCount != 0 && rectValueCount != rectValues.length) {
+      throw ArgumentError(
+        'All sourceRectHint values must be provided together.',
+      );
+    }
+    final isEmptySourceRectHint =
+        sourceRectHintLeft == 0 &&
+        sourceRectHintTop == 0 &&
+        sourceRectHintRight == 0 &&
+        sourceRectHintBottom == 0;
+    if (sourceRectHintLeft != null &&
+        !isEmptySourceRectHint &&
+        sourceRectHintRight! <= sourceRectHintLeft!) {
+      throw ArgumentError('sourceRectHintRight must be greater than left.');
+    }
+    if (sourceRectHintTop != null &&
+        !isEmptySourceRectHint &&
+        sourceRectHintBottom! <= sourceRectHintTop!) {
+      throw ArgumentError('sourceRectHintBottom must be greater than top.');
+    }
+
+    if (externalStateMonitorInterval != null &&
+        externalStateMonitorInterval! <= 0) {
+      throw ArgumentError.value(
+        externalStateMonitorInterval,
+        'externalStateMonitorInterval',
+      );
+    }
+  }
+
+  void _validateIosOptions() {
+    final hasPreferredContentWidth = preferredContentWidth != null;
+    final hasPreferredContentHeight = preferredContentHeight != null;
+    if (hasPreferredContentWidth != hasPreferredContentHeight) {
+      throw ArgumentError(
+        'preferredContentWidth and preferredContentHeight must be provided together.',
+      );
+    }
+    if (preferredContentWidth != null && preferredContentWidth! <= 0) {
+      throw ArgumentError.value(preferredContentWidth, 'preferredContentWidth');
+    }
+    if (preferredContentHeight != null && preferredContentHeight! <= 0) {
+      throw ArgumentError.value(
+        preferredContentHeight,
+        'preferredContentHeight',
+      );
+    }
+
+    if (controlStyle != null && (controlStyle! < 0 || controlStyle! > 3)) {
+      throw ArgumentError.value(controlStyle, 'controlStyle');
+    }
   }
 }
 
