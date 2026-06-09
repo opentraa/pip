@@ -1,29 +1,39 @@
 package org.opentraa.pip;
 
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
-import io.flutter.plugin.common.MethodCall;
-import io.flutter.plugin.common.MethodChannel;
+import android.graphics.Rect;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.robolectric.RobolectricTestRunner;
 
-/**
- * This demonstrates a simple unit test of the Java portion of this plugin's implementation.
- *
- * Once you have built the plugin's example app, you can run these tests from the command
- * line by running `./gradlew testDebugUnitTest` in the `example/android/` directory, or
- * you can run them directly from IDEs that support JUnit such as Android Studio.
- */
-
+@RunWith(RobolectricTestRunner.class)
 public class PipPluginTest {
   @Test
-  public void onMethodCall_getPlatformVersion_returnsExpectedValue() {
-    PipPlugin plugin = new PipPlugin();
+  public void parsePositiveIntReturnsNullForInvalidValues() {
+    assertEquals(Integer.valueOf(16), PipPlugin.parsePositiveInt(16));
+    assertNull(PipPlugin.parsePositiveInt(0));
+    assertNull(PipPlugin.parsePositiveInt(-1));
+    assertNull(PipPlugin.parsePositiveInt("16"));
+    assertNull(PipPlugin.parsePositiveInt(null));
+  }
 
-    final MethodCall call = new MethodCall("getPlatformVersion", null);
-    MethodChannel.Result mockResult = mock(MethodChannel.Result.class);
-    plugin.onMethodCall(call, mockResult);
+  @Test
+  public void parseSourceRectRejectsPartialOrInvalidRects() {
+    assertNull(PipPlugin.parseSourceRect(0, 0, 0, 10));
+    assertNull(PipPlugin.parseSourceRect(0, null, 10, 10));
 
-    verify(mockResult).success("Android " + android.os.Build.VERSION.RELEASE);
+    Rect emptyRect = PipPlugin.parseSourceRect(0, 0, 0, 0);
+    assertEquals(0, emptyRect.left);
+    assertEquals(0, emptyRect.top);
+    assertEquals(0, emptyRect.right);
+    assertEquals(0, emptyRect.bottom);
+
+    Rect rect = PipPlugin.parseSourceRect(0, 0, 10, 10);
+    assertEquals(0, rect.left);
+    assertEquals(0, rect.top);
+    assertEquals(10, rect.right);
+    assertEquals(10, rect.bottom);
   }
 }
