@@ -43,13 +43,13 @@ typedef NS_ENUM(NSInteger, PipState) {
  * @abstract The source content view for pip, set to nil will use the root
  * view of the application as the source content view.
  */
-@property(nonatomic, assign) UIView *_Nullable sourceContentView;
+@property(nonatomic, nullable, weak) UIView *sourceContentView;
 
 /**
  * @property contentView
  * @abstract The content view for pip.
  */
-@property(nonatomic, assign) UIView *_Nullable contentView;
+@property(nonatomic, nullable, weak) UIView *contentView;
 
 /**
  * @property autoEnterEnabled

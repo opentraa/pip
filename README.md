@@ -66,7 +66,7 @@ final options = PipOptions(
   contentView: 0,             // Content view to be displayed in PiP
   preferredContentWidth: 480,  // Preferred content width
   preferredContentHeight: 270, // Preferred content height
-  controlStyle: 2,            // Control style for PiP window
+  controlStyle: 1,            // Control style for PiP window
 );
 
 await _pip.setup(options);
@@ -130,9 +130,8 @@ PipOptions({
   int? preferredContentHeight,// Preferred content height
   int? controlStyle,          // Control style for PiP window
                               // 0: default show all system controls
-                              // 1: hide forward and backward button
-                              // 2: hide play pause button and the progress bar including forward and backward button (recommended)
-                              // 3: hide all system controls including the close and restore button
+                              // 1: request documented linear playback behavior
+                              // 2/3: accepted for backward compatibility, but private control hiding is ignored
 })
 ```
 
@@ -208,9 +207,9 @@ Future<void> unregisterStateChangedObserver()
 - The `contentView` will be added to the PiP view after setup, and you are responsible for rendering the content view
 - Choose appropriate `controlStyle` based on your needs:
   - Style 0: Shows all system controls (default)
-  - Style 1: Hides forward and backward buttons
-  - Style 2: Hides play/pause button and progress bar (recommended)
-  - Style 3: Hides all system controls including close and restore buttons
+  - Style 1: Requests documented linear playback behavior, which hides forward and backward controls where AVKit supports it
+  - Styles 2 and 3: Accepted for backward compatibility, but only documented AVKit behavior is applied
+- On iOS, `controlStyle` only uses documented AVKit behavior. Values that require private system control hiding are ignored to avoid App Store review and OS compatibility risk.
 - How to set the size of the PiP window? Just set the `preferredContentWidth` and `preferredContentHeight` in the `PipOptions`
 
 ## Best Practices
@@ -230,7 +229,7 @@ if (Platform.isAndroid) {
     sourceContentView: someOtherView,
     preferredContentWidth: 480,
     preferredContentHeight: 270,
-    controlStyle: 2,
+    controlStyle: 1,
   );
 }
 ```

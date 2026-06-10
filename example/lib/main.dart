@@ -258,7 +258,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         sourceContentView: _playerView,
         preferredContentWidth: int.tryParse(_aspectRatioXController.text),
         preferredContentHeight: int.tryParse(_aspectRatioYController.text),
-        controlStyle: 2,
+        controlStyle: 1,
       );
 
       try {
