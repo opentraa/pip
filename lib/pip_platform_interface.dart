@@ -85,7 +85,8 @@ class PipOptions {
   ///
   /// 0: default show all system controls
   /// 1: request documented linear playback behavior
-  /// 2/3: accepted for backward compatibility, but private control hiding is ignored on iOS
+  /// 2: hide play/pause button and progress bar using private iOS API
+  /// 3: hide all system controls using private iOS API
   final int? controlStyle;
 
   /// Convert the options to a dictionary.

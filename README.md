@@ -131,7 +131,8 @@ PipOptions({
   int? controlStyle,          // Control style for PiP window
                               // 0: default show all system controls
                               // 1: request documented linear playback behavior
-                              // 2/3: accepted for backward compatibility, but private control hiding is ignored
+                              // 2: hide play/pause button and progress bar using private iOS API
+                              // 3: hide all system controls using private iOS API
 })
 ```
 
@@ -208,8 +209,9 @@ Future<void> unregisterStateChangedObserver()
 - Choose appropriate `controlStyle` based on your needs:
   - Style 0: Shows all system controls (default)
   - Style 1: Requests documented linear playback behavior, which hides forward and backward controls where AVKit supports it
-  - Styles 2 and 3: Accepted for backward compatibility, but only documented AVKit behavior is applied
-- On iOS, `controlStyle` only uses documented AVKit behavior. Values that require private system control hiding are ignored to avoid App Store review and OS compatibility risk.
+  - Style 2: Hides play/pause button and progress bar using private iOS API
+  - Style 3: Hides all system controls using private iOS API
+- On iOS, `controlStyle` values 2 and 3 rely on private AVKit behavior. They may break on future iOS versions and can increase App Store review risk.
 - How to set the size of the PiP window? Just set the `preferredContentWidth` and `preferredContentHeight` in the `PipOptions`
 
 ## Best Practices

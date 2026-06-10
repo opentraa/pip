@@ -62,6 +62,8 @@
 // pip controller
 @property(nonatomic, strong) AVPictureInPictureController *pipController;
 
+@property(nonatomic, assign) BOOL privateControlsStyleApplied;
+
 @end
 
 @implementation PipController
@@ -99,6 +101,31 @@
   }
 
   return fallbackKeyWindow;
+}
+
+- (void)applyControlStyle:(int)controlStyle {
+  _pipController.requiresLinearPlayback = controlStyle >= 1;
+
+  NSNumber *privateControlsStyle = nil;
+  if (controlStyle == 2) {
+    privateControlsStyle = @1;
+  } else if (controlStyle == 3) {
+    privateControlsStyle = @2;
+  } else if (_privateControlsStyleApplied) {
+    privateControlsStyle = @0;
+  }
+
+  if (privateControlsStyle == nil) {
+    return;
+  }
+
+  @try {
+    [_pipController setValue:privateControlsStyle forKey:@"controlsStyle"];
+    _privateControlsStyleApplied = privateControlsStyle.intValue != 0;
+  } @catch (NSException *exception) {
+    PIP_LOG(@"Failed to apply private controlsStyle %@: %@",
+            privateControlsStyle, exception.reason);
+  }
 }
 
 - (instancetype)initWith:(id<PipStateChangedDelegate>)delegate {
@@ -217,6 +244,7 @@
       _pipController = [[AVPictureInPictureController alloc]
           initWithContentSource:contentSource];
       _pipController.delegate = self;
+      _privateControlsStyleApplied = NO;
       _pipController.canStartPictureInPictureAutomaticallyFromInline =
           options.autoEnterEnabled;
 
@@ -251,7 +279,7 @@
       }
     }
 
-    _pipController.requiresLinearPlayback = options.controlStyle >= 1;
+    [self applyControlStyle:options.controlStyle];
 
     return YES;
   }
