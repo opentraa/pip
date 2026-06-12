@@ -18,6 +18,14 @@ private final class FakePictureInPictureController: NSObject {
   }
 }
 
+private final class DeinitAwareView: UIView {
+  var onDeinit: (() -> Void)?
+
+  deinit {
+    onDeinit?()
+  }
+}
+
 final class RunnerTests: XCTestCase {
   func testPipOptionsViewPropertiesUseWeakReferences() {
     guard let pipOptionsClass = NSClassFromString("PipOptions") else {
@@ -102,6 +110,65 @@ final class RunnerTests: XCTestCase {
     XCTAssertEqual(fakePictureInPictureController.appliedControlStyles.last, 0)
   }
 
+  func testPipControllerRestoresContentViewAfterMovingBetweenParents() {
+    guard let pipControllerClass = NSClassFromString("PipController") as? NSObject.Type else {
+      return XCTFail("PipController class not found at runtime")
+    }
+
+    let controller = pipControllerClass.init()
+    let originalParent = UIView(frame: CGRect(x: 0, y: 0, width: 120, height: 120))
+    let newParent = UIView(frame: CGRect(x: 0, y: 0, width: 240, height: 240))
+
+    var deinitCalled = false
+    weak var weakManagedContentView: DeinitAwareView?
+
+    func installManagedContentView() {
+      let managedContentView = DeinitAwareView(frame: CGRect(x: 10, y: 20, width: 30, height: 40))
+      managedContentView.translatesAutoresizingMaskIntoConstraints = false
+      managedContentView.onDeinit = {
+        deinitCalled = true
+      }
+
+      weakManagedContentView = managedContentView
+      originalParent.addSubview(managedContentView)
+      controller.setValue(managedContentView, forKey: "contentView")
+    }
+
+    installManagedContentView()
+    guard weakManagedContentView != nil else {
+      return XCTFail("Failed to create content view")
+    }
+
+    invokeVoidSelector(
+      named: "insertContentViewIfNeeded:",
+      on: controller,
+      object: newParent,
+      owner: pipControllerClass
+    )
+
+    guard let insertedContentView = weakManagedContentView else {
+      return XCTFail("contentView should stay alive after being inserted into the new parent")
+    }
+    XCTAssertTrue(newParent.subviews.contains(insertedContentView))
+    XCTAssertFalse(originalParent.subviews.contains(insertedContentView))
+    XCTAssertFalse(deinitCalled, "contentView should stay alive while it is managed by a parent view")
+
+    invokeVoidSelector(
+      named: "restoreContentViewIfNeeded",
+      on: controller,
+      owner: pipControllerClass
+    )
+
+    guard let restoredContentView = weakManagedContentView else {
+      return XCTFail("contentView should still be alive after restoration")
+    }
+
+    XCTAssertTrue(originalParent.subviews.contains(restoredContentView))
+    XCTAssertFalse(newParent.subviews.contains(restoredContentView))
+    XCTAssertEqual(restoredContentView.frame, CGRect(x: 10, y: 20, width: 30, height: 40))
+    XCTAssertFalse(deinitCalled, "contentView should remain alive after restoration")
+  }
+
   private func assertPropertyAttributes(
     of cls: AnyClass,
     named propertyName: String,
@@ -132,5 +199,38 @@ final class RunnerTests: XCTestCase {
       file: file,
       line: line
     )
+  }
+
+  private func invokeVoidSelector(
+    named selectorName: String,
+    on object: AnyObject,
+    owner cls: AnyClass
+  ) {
+    let selector = NSSelectorFromString(selectorName)
+    guard let method = class_getInstanceMethod(cls, selector) else {
+      return XCTFail("Expected selector \(selectorName) on \(NSStringFromClass(cls))")
+    }
+
+    typealias VoidMethod = @convention(c) (AnyObject, Selector) -> Void
+    let implementation = method_getImplementation(method)
+    let function = unsafeBitCast(implementation, to: VoidMethod.self)
+    function(object, selector)
+  }
+
+  private func invokeVoidSelector(
+    named selectorName: String,
+    on object: AnyObject,
+    object argument: AnyObject,
+    owner cls: AnyClass
+  ) {
+    let selector = NSSelectorFromString(selectorName)
+    guard let method = class_getInstanceMethod(cls, selector) else {
+      return XCTFail("Expected selector \(selectorName) on \(NSStringFromClass(cls))")
+    }
+
+    typealias ObjectMethod = @convention(c) (AnyObject, Selector, AnyObject) -> Void
+    let implementation = method_getImplementation(method)
+    let function = unsafeBitCast(implementation, to: ObjectMethod.self)
+    function(object, selector, argument)
   }
 }

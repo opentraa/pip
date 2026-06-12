@@ -366,15 +366,17 @@
 // you should addtionaly call bringSubViewToFront in
 // pictureInPictureControllerDidStartPictureInPicture.
 - (void)insertContentViewIfNeeded:(UIView *)newParentView {
+  UIView *contentView = _contentView;
+
   // if the content view is not set or the new parent view is not set, just
   // return
-  if (_contentView == nil || newParentView == nil) {
+  if (contentView == nil || newParentView == nil) {
     PIP_LOG(@"insertContentViewIfNeeded: contentView or newParentView is nil");
     return;
   }
 
   // if the content view is already in the new parent view, just return
-  if ([newParentView.subviews containsObject:_contentView]) {
+  if ([newParentView.subviews containsObject:contentView]) {
     PIP_LOG(@"insertContentViewIfNeeded: contentView is already in the new "
             @"parent view");
     return;
@@ -382,21 +384,24 @@
 
   // save the original content view properties
   [self clearContentViewRestoreSnapshot];
-  _contentViewOriginalParentView = _contentView.superview;
-  if (_contentViewOriginalParentView != nil) {
+  UIView *originalParentView = contentView.superview;
+  _contentViewOriginalParentView = originalParentView;
+  if (originalParentView != nil) {
+    NSArray *contentViewConstraints = contentView.constraints ?: @[];
+    NSArray *originalParentConstraints = originalParentView.constraints ?: @[];
+
     _contentViewOriginalIndex =
-        [_contentViewOriginalParentView.subviews indexOfObject:_contentView];
-    _contentViewOriginalFrame = _contentView.frame;
+        [originalParentView.subviews indexOfObject:contentView];
+    _contentViewOriginalFrame = contentView.frame;
     _contentViewOriginalTranslatesAutoresizingMaskIntoConstraints =
-        _contentView.translatesAutoresizingMaskIntoConstraints;
+        contentView.translatesAutoresizingMaskIntoConstraints;
     [_contentViewOriginalConstraints
-        addObjectsFromArray:_contentView.constraints.mutableCopy];
+        addObjectsFromArray:contentViewConstraints];
     [_contentViewOriginalParentViewConstraints
-        addObjectsFromArray:_contentViewOriginalParentView.constraints
-                                .mutableCopy];
+        addObjectsFromArray:originalParentConstraints];
 
     // remove the content view from the original parent view
-    [_contentView removeFromSuperview];
+    [contentView removeFromSuperview];
 
     PIP_LOG(
         @"insertContentViewIfNeeded: contentView is removed from the original "
@@ -404,7 +409,7 @@
   }
 
   // add the content view to the new parent view
-  [newParentView insertSubview:_contentView
+  [newParentView insertSubview:contentView
                        atIndex:newParentView.subviews.count];
 
   // no need to bring the content view to the front, because the content view
@@ -413,10 +418,10 @@
   // [newParentView bringSubviewToFront:_contentView];
 
   // update the content view constraints
-  _contentView.translatesAutoresizingMaskIntoConstraints = YES;
-  _contentView.autoresizingMask =
+  contentView.translatesAutoresizingMaskIntoConstraints = YES;
+  contentView.autoresizingMask =
       UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-  _contentView.frame = newParentView.frame;
+  contentView.frame = newParentView.frame;
 
   // It seems like no need to do so.
   // [newParentView addConstraints:@[
@@ -434,10 +439,13 @@
 }
 
 - (void)restoreContentViewIfNeeded {
+  UIView *contentView = _contentView;
+  UIView *originalParentView = _contentViewOriginalParentView;
+
   // only restore the content view if it is not nil and the original parent
   // view is not nil and the content view is already in the original parent view
-  if (_contentView == nil || _contentViewOriginalParentView == nil ||
-      [_contentViewOriginalParentView.subviews containsObject:_contentView]) {
+  if (contentView == nil || originalParentView == nil ||
+      [originalParentView.subviews containsObject:contentView]) {
     PIP_LOG(
         @"restoreContentViewIfNeeded: _contentViewOriginalParentView is nil or "
         @"contentView is already in the original parent view");
@@ -445,16 +453,16 @@
     return;
   }
 
-  [_contentView removeFromSuperview];
+  [contentView removeFromSuperview];
   PIP_LOG(
       @"restoreContentViewIfNeeded: contentView is removed from the original "
       @"parent view");
 
   // in case that the subviews of _contentViewOriginalParentView has been
   // changed, we need to get the real index of the content view.
-  NSUInteger trueIndex = MIN(_contentViewOriginalParentView.subviews.count,
+  NSUInteger trueIndex = MIN(originalParentView.subviews.count,
                              _contentViewOriginalIndex);
-  [_contentViewOriginalParentView insertSubview:_contentView atIndex:trueIndex];
+  [originalParentView insertSubview:contentView atIndex:trueIndex];
 
   PIP_LOG(@"restoreContentViewIfNeeded: contentView is added to the original "
           @"parent view "
@@ -462,21 +470,30 @@
           trueIndex);
 
   // restore the original frame
-  _contentView.frame = _contentViewOriginalFrame;
+  contentView.frame = _contentViewOriginalFrame;
 
   // restore the original constraints
-  [_contentView removeConstraints:_contentView.constraints.copy];
-  [_contentView addConstraints:_contentViewOriginalConstraints];
+  NSArray *currentContentConstraints = contentView.constraints ?: @[];
+  if (currentContentConstraints.count > 0) {
+    [contentView removeConstraints:currentContentConstraints];
+  }
+  if (_contentViewOriginalConstraints.count > 0) {
+    [contentView addConstraints:_contentViewOriginalConstraints];
+  }
 
   // restore the original translatesAutoresizingMaskIntoConstraints
-  _contentView.translatesAutoresizingMaskIntoConstraints =
+  contentView.translatesAutoresizingMaskIntoConstraints =
       _contentViewOriginalTranslatesAutoresizingMaskIntoConstraints;
 
   // restore the original parent view
-  [_contentViewOriginalParentView
-      removeConstraints:_contentViewOriginalParentView.constraints.copy];
-  [_contentViewOriginalParentView
-      addConstraints:_contentViewOriginalParentViewConstraints];
+  NSArray *currentOriginalParentConstraints = originalParentView.constraints ?: @[];
+  if (currentOriginalParentConstraints.count > 0) {
+    [originalParentView removeConstraints:currentOriginalParentConstraints];
+  }
+  if (_contentViewOriginalParentViewConstraints.count > 0) {
+    [originalParentView
+        addConstraints:_contentViewOriginalParentViewConstraints];
+  }
 
   [self clearContentViewRestoreSnapshot];
 }
