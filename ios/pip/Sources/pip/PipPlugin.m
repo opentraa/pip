@@ -31,45 +31,52 @@
   } else if ([@"isActived" isEqualToString:call.method]) {
     result([NSNumber numberWithBool:[self.pipController isActived]]);
   } else if ([@"setup" isEqualToString:call.method]) {
+    if (![call.arguments isKindOfClass:[NSDictionary class]]) {
+      result(@NO);
+      return;
+    }
+
+    NSDictionary *arguments = (NSDictionary *)call.arguments;
+
     @autoreleasepool {
       // new options
       PipOptions *options = [[PipOptions alloc] init];
 
       // source content view
-      if ([call.arguments objectForKey:@"sourceContentView"] &&
-          [[call.arguments objectForKey:@"sourceContentView"]
+      if ([arguments objectForKey:@"sourceContentView"] &&
+          [[arguments objectForKey:@"sourceContentView"]
               isKindOfClass:[NSNumber class]]) {
-        options.sourceContentView = (__bridge UIView *)[[call.arguments
+        options.sourceContentView = (__bridge UIView *)[[arguments
             objectForKey:@"sourceContentView"] pointerValue];
       }
 
       // content view
-      if ([call.arguments objectForKey:@"contentView"] &&
-          [[call.arguments objectForKey:@"contentView"]
+      if ([arguments objectForKey:@"contentView"] &&
+          [[arguments objectForKey:@"contentView"]
               isKindOfClass:[NSNumber class]]) {
-        options.contentView = (__bridge UIView *)[[call.arguments
+        options.contentView = (__bridge UIView *)[[arguments
             objectForKey:@"contentView"] pointerValue];
       }
 
       // auto enter
-      if ([call.arguments objectForKey:@"autoEnterEnabled"]) {
+      if ([arguments objectForKey:@"autoEnterEnabled"]) {
         options.autoEnterEnabled =
-            [[call.arguments objectForKey:@"autoEnterEnabled"] boolValue];
+            [[arguments objectForKey:@"autoEnterEnabled"] boolValue];
       }
 
       // preferred content size
-      if ([call.arguments objectForKey:@"preferredContentWidth"] &&
-          [call.arguments objectForKey:@"preferredContentHeight"]) {
+      if ([arguments objectForKey:@"preferredContentWidth"] &&
+          [arguments objectForKey:@"preferredContentHeight"]) {
         options.preferredContentSize = CGSizeMake(
-            [[call.arguments objectForKey:@"preferredContentWidth"] floatValue],
-            [[call.arguments objectForKey:@"preferredContentHeight"]
+            [[arguments objectForKey:@"preferredContentWidth"] floatValue],
+            [[arguments objectForKey:@"preferredContentHeight"]
                 floatValue]);
       }
 
       // control style
-      if ([call.arguments objectForKey:@"controlStyle"]) {
+      if ([arguments objectForKey:@"controlStyle"]) {
         options.controlStyle =
-            [[call.arguments objectForKey:@"controlStyle"] intValue];
+            [[arguments objectForKey:@"controlStyle"] intValue];
       } else {
         // default to show all system controls
         options.controlStyle = 0;

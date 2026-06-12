@@ -18,8 +18,6 @@
 #define PIP_LOG(fmt, ...)
 #endif
 
-#define USE_PIP_VIEW_CONTROLLER 0
-
 @implementation PipOptions {
 }
 @end
@@ -35,7 +33,7 @@
 
 #pragma mark - content view
 // content view
-@property(nonatomic, assign) UIView *contentView;
+@property(nonatomic, weak) UIView *contentView;
 
 // content view original index
 @property(nonatomic, assign) NSUInteger contentViewOriginalIndex;
@@ -51,7 +49,7 @@
     bool contentViewOriginalTranslatesAutoresizingMaskIntoConstraints;
 
 // content view original parent view
-@property(nonatomic, assign) UIView *contentViewOriginalParentView;
+@property(nonatomic, weak) UIView *contentViewOriginalParentView;
 
 // content view original parent view constraints
 @property(nonatomic, strong)
@@ -63,18 +61,73 @@
 
 // pip controller
 @property(nonatomic, strong) AVPictureInPictureController *pipController;
-
-#if USE_PIP_VIEW_CONTROLLER
-// Do not use this anymore, it is dangerous to use it and do not have the best
-// user experience(we have to call bringToFront in didStart which make the
-// truely pip view not visible for a while ).
-// pip view controller, weak reference
-@property(nonatomic) UIViewController *pipViewController;
-#endif
+@property(nonatomic, assign) BOOL privateControlsStyleApplied;
 
 @end
 
 @implementation PipController
+
+- (void)clearContentViewRestoreSnapshot {
+  [_contentViewOriginalConstraints removeAllObjects];
+  [_contentViewOriginalParentViewConstraints removeAllObjects];
+  _contentViewOriginalParentView = nil;
+  _contentViewOriginalIndex = 0;
+  _contentViewOriginalFrame = CGRectZero;
+  _contentViewOriginalTranslatesAutoresizingMaskIntoConstraints = false;
+}
+
+- (UIWindow *)activeKeyWindow {
+  UIWindow *fallbackKeyWindow = nil;
+
+  for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+    if (![scene isKindOfClass:UIWindowScene.class]) {
+      continue;
+    }
+
+    UIWindowScene *windowScene = (UIWindowScene *)scene;
+    for (UIWindow *window in windowScene.windows) {
+      if (!window.isKeyWindow) {
+        continue;
+      }
+
+      if (scene.activationState == UISceneActivationStateForegroundActive ||
+          scene.activationState == UISceneActivationStateForegroundInactive) {
+        return window;
+      }
+
+      if (fallbackKeyWindow == nil) {
+        fallbackKeyWindow = window;
+      }
+    }
+  }
+
+  return fallbackKeyWindow;
+}
+
+- (void)applyControlStyle:(int)controlStyle {
+  _pipController.requiresLinearPlayback = controlStyle >= 1;
+
+  NSNumber *privateControlsStyle = nil;
+  if (controlStyle == 2) {
+    privateControlsStyle = @1;
+  } else if (controlStyle == 3) {
+    privateControlsStyle = @2;
+  } else if (_privateControlsStyleApplied) {
+    privateControlsStyle = @0;
+  }
+
+  if (privateControlsStyle == nil) {
+    return;
+  }
+
+  @try {
+    [_pipController setValue:privateControlsStyle forKey:@"controlsStyle"];
+    _privateControlsStyleApplied = privateControlsStyle.intValue != 0;
+  } @catch (NSException *exception) {
+    PIP_LOG(@"Failed to apply private controlsStyle %@: %@",
+            privateControlsStyle, exception.reason);
+  }
+}
 
 - (instancetype)initWith:(id<PipStateChangedDelegate>)delegate {
   self = [super init];
@@ -113,6 +166,14 @@
 }
 
 - (BOOL)setup:(PipOptions *)options {
+  if (![NSThread isMainThread]) {
+    __block BOOL result = NO;
+    dispatch_sync(dispatch_get_main_queue(), ^{
+      result = [self setup:options];
+    });
+    return result;
+  }
+
   PIP_LOG(@"PipController setup with preferredContentSize: %@, "
           @"autoEnterEnabled: %d",
           NSStringFromCGSize(options.preferredContentSize),
@@ -129,10 +190,14 @@
     UIView *currentVideoSourceView =
         (options.sourceContentView != nil)
             ? options.sourceContentView
-            : [UIApplication.sharedApplication.keyWindow rootViewController]
-                  .view;
+            : [self activeKeyWindow].rootViewController.view;
+    if (currentVideoSourceView == nil) {
+      [_pipStateDelegate pipStateChanged:PipStateFailed
+                                   error:@"Pip source view is not available"];
+      return NO;
+    }
 
-    _contentView = (UIView *)options.contentView;
+    UIView *contentView = options.contentView;
 
     // We need to setup or re-setup the pip controller if:
     // 1. The pip controller hasn't been initialized yet (_pipController == nil)
@@ -148,6 +213,7 @@
 
       // create pip view
       _pipView = [[PipView alloc] init];
+      _contentView = contentView;
 
       [currentVideoSourceView insertSubview:_pipView atIndex:0];
 
@@ -179,30 +245,9 @@
       _pipController = [[AVPictureInPictureController alloc]
           initWithContentSource:contentSource];
       _pipController.delegate = self;
+      _privateControlsStyleApplied = NO;
       _pipController.canStartPictureInPictureAutomaticallyFromInline =
           options.autoEnterEnabled;
-
-      // hide forward and backward button
-      if (options.controlStyle >= 1) {
-        _pipController.requiresLinearPlayback = YES;
-      }
-
-      if (options.controlStyle == 2) {
-        // hide play pause button and the progress bar including forward and
-        // backward button
-        [_pipController setValue:[NSNumber numberWithInt:1]
-                          forKey:@"controlsStyle"];
-      } else if (options.controlStyle == 3) {
-        // hide all system controls including the close and restore button
-        [_pipController setValue:[NSNumber numberWithInt:2]
-                          forKey:@"controlsStyle"];
-      }
-
-#if USE_PIP_VIEW_CONTROLLER
-      NSString *pipVCName =
-          [NSString stringWithFormat:@"pictureInPictureViewController"];
-      _pipViewController = [_pipController valueForKey:pipVCName];
-#endif
     } else {
       // pip controller is already initialized, so we need to update the options
 
@@ -212,12 +257,12 @@
       // if _contentView is not equal to options.contentView, it means the
       // content view has been changed, so we need to remove the old content
       // view and add the new one.
-      if (_contentView != options.contentView) {
+      if (_contentView != contentView) {
         if (_contentView != nil) {
           [self restoreContentViewIfNeeded];
         }
 
-        _contentView = (UIView *)options.contentView;
+        _contentView = contentView;
       }
 
       if (options.preferredContentSize.width > 0 &&
@@ -234,6 +279,8 @@
       }
     }
 
+    [self applyControlStyle:options.controlStyle];
+
     return YES;
   }
 
@@ -245,6 +292,14 @@
 }
 
 - (BOOL)start {
+  if (![NSThread isMainThread]) {
+    __block BOOL result = NO;
+    dispatch_sync(dispatch_get_main_queue(), ^{
+      result = [self start];
+    });
+    return result;
+  }
+
   PIP_LOG(@"PipController start");
 
   if (![self isSupported]) {
@@ -276,6 +331,13 @@
 }
 
 - (void)stop {
+  if (![NSThread isMainThread]) {
+    dispatch_async(dispatch_get_main_queue(), ^{
+      [self stop];
+    });
+    return;
+  }
+
   PIP_LOG(@"PipController stop");
 
   if (![self isSupported]) {
@@ -319,6 +381,7 @@
   }
 
   // save the original content view properties
+  [self clearContentViewRestoreSnapshot];
   _contentViewOriginalParentView = _contentView.superview;
   if (_contentViewOriginalParentView != nil) {
     _contentViewOriginalIndex =
@@ -378,6 +441,7 @@
     PIP_LOG(
         @"restoreContentViewIfNeeded: _contentViewOriginalParentView is nil or "
         @"contentView is already in the original parent view");
+    [self clearContentViewRestoreSnapshot];
     return;
   }
 
@@ -413,9 +477,18 @@
       removeConstraints:_contentViewOriginalParentView.constraints.copy];
   [_contentViewOriginalParentView
       addConstraints:_contentViewOriginalParentViewConstraints];
+
+  [self clearContentViewRestoreSnapshot];
 }
 
 - (void)dispose {
+  if (![NSThread isMainThread]) {
+    dispatch_async(dispatch_get_main_queue(), ^{
+      [self dispose];
+    });
+    return;
+  }
+
   PIP_LOG(@"PipController dispose");
 
   if (self->_pipController != nil) {
@@ -456,36 +529,18 @@
 - (void)pictureInPictureControllerWillStartPictureInPicture:
     (AVPictureInPictureController *)pictureInPictureController {
   PIP_LOG(@"pictureInPictureControllerWillStartPictureInPicture");
-
-#if USE_PIP_VIEW_CONTROLLER
-  if (_pipViewController) {
-    [self insertContentViewIfNeeded:_pipViewController.view];
-  }
-#endif
 }
 
 - (void)pictureInPictureControllerDidStartPictureInPicture:
     (AVPictureInPictureController *)pictureInPictureController {
   PIP_LOG(@"pictureInPictureControllerDidStartPictureInPicture");
 
-#if USE_PIP_VIEW_CONTROLLER
-  // if you use the pipViewController, you must call this every time to bring
-  // the content view to the front, otherwise the content view will not be
-  // visible and covered by the pip host view.
-  if (_pipViewController) {
-    [_pipViewController.view bringSubviewToFront:_contentView];
-  }
-#else
-  // TODO @sylar: check if this is the best way to do this, what will happen if
-  // we have multiple windows? what if the root view controller is not a
-  // UIViewController?
-  UIWindow *window = [[UIApplication sharedApplication] windows].firstObject;
+  UIWindow *window = [self activeKeyWindow];
   if (window) {
     UIViewController *rootViewController = window.rootViewController;
     UIView *superview = rootViewController.view.superview;
     [self insertContentViewIfNeeded:superview];
   }
-#endif
 
   _isPipActived = YES;
   [_pipStateDelegate pipStateChanged:PipStateStarted error:nil];
