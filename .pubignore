@@ -1,4 +1,5 @@
 test/
+docs/
 
 # Local build and tool state should never be part of the published package.
 .dart_tool/

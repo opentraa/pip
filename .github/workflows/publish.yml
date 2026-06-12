@@ -29,6 +29,9 @@ jobs:
       - name: Run package checks
         run: ./scripts/check.sh
 
+      - name: Check release metadata
+        run: ./scripts/check_release_ready.sh
+
       - name: Publish dry run
         if: inputs.dry_run
         run: ./scripts/publish.sh dry-run

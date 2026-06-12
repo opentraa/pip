@@ -38,6 +38,11 @@ jobs:
       - name: Run package checks
         run: ./scripts/check.sh
 
+      - name: Check release metadata
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: ./scripts/check_release_ready.sh
+
       - name: Create GitHub release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
