@@ -25,6 +25,14 @@ jobs:
       - name: Run package checks
         run: ./scripts/check.sh
 
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-lcov
+          path: coverage/lcov.info
+          if-no-files-found: ignore
+
       - name: Check release metadata
         run: ./scripts/check_release_ready.sh
 
