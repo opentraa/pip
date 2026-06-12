@@ -25,6 +25,9 @@ jobs:
       - name: Run package checks
         run: ./scripts/check.sh
 
+      - name: Check release metadata
+        run: ./scripts/check_release_ready.sh
+
       - name: Check Swift Package Manager support
         run: ./scripts/check_spm.sh
 

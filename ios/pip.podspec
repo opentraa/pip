@@ -4,7 +4,7 @@
 #
 Pod::Spec.new do |s|
   s.name             = 'pip'
-  s.version          = '0.0.1'
+  s.version          = '0.0.3'
   s.summary          = 'A plugin for Picture in Picture.'
   s.description      = <<-DESC
 A plugin for Picture in Picture.
