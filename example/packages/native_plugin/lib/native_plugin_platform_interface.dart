@@ -28,10 +28,14 @@ abstract class NativePluginPlatform extends PlatformInterface {
   }
 
   Future<int> createPipContentView() {
-    throw UnimplementedError('createPipContentView() has not been implemented.');
+    throw UnimplementedError(
+      'createPipContentView() has not been implemented.',
+    );
   }
 
   Future<void> disposePipContentView(int viewId) {
-    throw UnimplementedError('disposePipContentView() has not been implemented.');
+    throw UnimplementedError(
+      'disposePipContentView() has not been implemented.',
+    );
   }
 }

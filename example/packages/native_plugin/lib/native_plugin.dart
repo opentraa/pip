@@ -1,4 +1,3 @@
-
 import 'native_plugin_platform_interface.dart';
 
 class NativePlugin {

@@ -11,13 +11,17 @@ class MethodChannelNativePlugin extends NativePluginPlatform {
 
   @override
   Future<String?> getPlatformVersion() async {
-    final version = await methodChannel.invokeMethod<String>('getPlatformVersion');
+    final version = await methodChannel.invokeMethod<String>(
+      'getPlatformVersion',
+    );
     return version;
   }
 
   @override
   Future<int> createPipContentView() async {
-    final viewId = await methodChannel.invokeMethod<int>('createPipContentView');
+    final viewId = await methodChannel.invokeMethod<int>(
+      'createPipContentView',
+    );
     return viewId ?? 0;
   }
 
