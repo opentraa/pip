@@ -84,9 +84,9 @@ class PipOptions {
   /// The control style of the content view.
   ///
   /// 0: default show all system controls
-  /// 1: hide forward and backward button
-  /// 2: hide play pause button and the progress bar including forward and backward button (recommended)
-  /// 3: hide all system controls including the close and restore button
+  /// 1: request documented linear playback behavior
+  /// 2: hide play/pause button and progress bar using private iOS API
+  /// 3: hide all system controls using private iOS API
   final int? controlStyle;
 
   /// Convert the options to a dictionary.

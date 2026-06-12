@@ -235,6 +235,19 @@ void main() {
     });
   });
 
+  test('allows iOS private control styles for backward compatibility', () {
+    withTargetPlatform(TargetPlatform.iOS, () {
+      expect(
+        const PipOptions(controlStyle: 2).toDictionary(),
+        containsPair('controlStyle', 2),
+      );
+      expect(
+        const PipOptions(controlStyle: 3).toDictionary(),
+        containsPair('controlStyle', 3),
+      );
+    });
+  });
+
   test('ignores invalid options for inactive platforms', () {
     withTargetPlatform(TargetPlatform.iOS, () {
       expect(
