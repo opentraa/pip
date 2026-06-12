@@ -5,8 +5,12 @@ on:
   push:
   workflow_dispatch:
 
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  check:
+  package:
     runs-on: macos-latest
 
     steps:
@@ -41,3 +45,55 @@ jobs:
 
       - name: Check Android deprecated API usage
         run: ./scripts/check_android_deprecated_api.sh
+
+  android-example:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.3"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Build Android example
+        working-directory: example
+        run: flutter build apk --debug
+
+      - name: Run Android native unit tests
+        working-directory: example/android
+        run: gradle testDebugUnitTest
+
+  ios-example:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Build iOS example
+        working-directory: example
+        run: flutter build ios --no-codesign
+
+      - name: Lint CocoaPods spec
+        run: pod lib lint ios/pip.podspec --allow-warnings
