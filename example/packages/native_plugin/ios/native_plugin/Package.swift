@@ -7,7 +7,7 @@ let package = Package(
         .iOS("12.0")
     ],
     products: [
-        .library(name: "native_plugin", targets: ["native_plugin"])
+        .library(name: "native-plugin", targets: ["native_plugin"])
     ],
     dependencies: [
         .package(name: "FlutterFramework", path: "../FlutterFramework")
