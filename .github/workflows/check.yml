@@ -76,7 +76,7 @@ jobs:
 
       - name: Run Android native unit tests
         working-directory: example/android
-        run: gradle testDebugUnitTest
+        run: ./gradlew testDebugUnitTest
 
   ios-example:
     runs-on: macos-latest

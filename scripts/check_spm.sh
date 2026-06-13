@@ -2,7 +2,8 @@
 set -euo pipefail
 
 if command -v flutter >/dev/null 2>&1; then
-  flutter_cmd=("$(command -v flutter)")
+  flutter_bin="$(command -v flutter)"
+  flutter_cmd=("$flutter_bin")
 elif command -v fvm >/dev/null 2>&1; then
   flutter_cmd=(fvm flutter)
 else
