@@ -13,8 +13,8 @@ body:
   - type: input
     id: pip_version
     attributes:
-      label: pip version
-      placeholder: "0.0.3"
+      label: Package version
+      placeholder: "e.g. 0.0.3 (from pubspec.yaml)"
     validations:
       required: true
   - type: dropdown
