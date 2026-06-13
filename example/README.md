@@ -1,16 +1,35 @@
-# pip_example
+# pip Example
 
-Demonstrates how to use the pip plugin.
+This app demonstrates Android and iOS Picture in Picture integration for the
+`pip` plugin.
 
-## Getting Started
+## Run
 
-This project is a starting point for a Flutter application.
+```bash
+flutter pub get
+flutter run
+```
 
-A few resources to get you started if this is your first Flutter project:
+## Android
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+The Android example:
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+- enables `android:supportsPictureInPicture="true"` in
+  `android/app/src/main/AndroidManifest.xml`
+- makes `MainActivity` extend `org.opentraa.pip.PipActivity`
+- configures aspect ratio, source rect hint, and external state monitoring
+
+This setup shows how to keep Android PiP lifecycle hooks wired through the host
+activity.
+
+## iOS
+
+The iOS example uses `example/packages/native_plugin` to:
+
+- create a native source view handle
+- create a native PiP content view handle
+- pass those native view IDs into `PipOptions`
+
+This helper package exists only to demonstrate the native-view requirement for
+iOS PiP. Real apps can provide those native views through their own host-side
+code.

@@ -1,278 +1,213 @@
-# Flutter PiP Plugin Usage Guide
+# pip
 
-## Introduction
-pip is a Flutter plugin that supports Picture in Picture (PiP) functionality for both Android and iOS. It allows applications to continue displaying content in a small window while in the background.
+Flutter Picture in Picture plugin for Android and iOS with platform setup
+helpers, state callbacks, and iOS native PiP view support.
 
 ## Preview
 
-![ios](assets/pip_ios.gif)
+![iOS PiP preview](assets/pip_ios.gif)
 
-![android](assets/pip_android.gif)
+![Android PiP preview](assets/pip_android.gif)
+
+## Platform Support
+
+| Platform | Minimum OS | Notes |
+| --- | --- | --- |
+| Android | API 26 for PiP support | Android 12+ supports native auto-enter. Android 11 and lower need a host activity that extends `PipActivity` if you want the plugin to bridge `onUserLeaveHint`. |
+| iOS | iOS 15 for video-call PiP | Requires AVKit video-call PiP conditions and a native `UIView` that can be used as PiP content. |
 
 ## Installation
-Add the dependency in your `pubspec.yaml`:
+
+Add the plugin to your app:
+
 ```yaml
 dependencies:
-  pip: ^latest_version
+  pip: ^0.0.3
 ```
 
-## Platform Specific Setup  
+Then run:
 
-### Android
+```bash
+flutter pub get
+```
 
-Add the following permission to your `AndroidManifest.xml`:
+## Integration Model
+
+`pip` is a single-package Flutter plugin. The Dart API handles capability
+checks, setup, lifecycle requests, and state observation. Actual PiP rendering
+still depends on host-platform requirements:
+
+- Android PiP is owned by the system activity stack.
+- iOS PiP is owned by AVKit and needs native content views rather than a pure
+  Flutter widget tree.
+
+Treat `setup()` as platform configuration, `start()` / `stop()` as requests,
+and state callbacks as the source of truth for what actually happened.
+
+## Android Setup
+
+Enable PiP on the activity that hosts Flutter:
 
 ```xml
-<activity android:name="VideoActivity"
+<activity
+    android:name=".MainActivity"
     android:supportsPictureInPicture="true"
-    android:configChanges=
-        "screenSize|smallestScreenSize|screenLayout|orientation"
-    ...
+    android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation" />
 ```
+
+If you need the plugin to participate in Android 11 and lower auto-enter
+behavior, make your activity extend `org.opentraa.pip.PipActivity` instead of
+plain `FlutterActivity`:
+
+```java
+package com.example.app;
+
+import org.opentraa.pip.PipActivity;
+
+public class MainActivity extends PipActivity {
+}
+```
+
+Android-specific `PipOptions` fields:
+
+- `aspectRatioX` / `aspectRatioY`
+- `sourceRectHintLeft` / `Top` / `Right` / `Bottom`
+- `seamlessResizeEnabled`
+- `useExternalStateMonitor`
+- `externalStateMonitorInterval`
+
+`sourceRectHint*` values must be provided together. `aspectRatioX` and
+`aspectRatioY` must also be provided together.
+
+## iOS Setup
+
+On iOS, PiP content must come from a native `UIView` backed by renderable video
+or sample-buffer content. The plugin exposes `getPipView()` and accepts
+`sourceContentView` / `contentView` IDs in `PipOptions`, but your host app is
+still responsible for creating those native views and keeping them renderable.
+
+The bundled example uses `example/packages/native_plugin` only to demonstrate
+how to create a native source view and a native PiP content view handle. That
+helper package is not part of the public `pip` API contract.
+
+If your app uses audio/video PiP on iOS, configure the required host-app
+capabilities as well:
+
+- Background modes appropriate for your playback/call scenario
+- `AVAudioSession` configuration that matches your media behavior
+
+iOS-specific `PipOptions` fields:
+
+- `sourceContentView`
+- `contentView`
+- `preferredContentWidth`
+- `preferredContentHeight`
+- `controlStyle`
+
+`preferredContentWidth` and `preferredContentHeight` must be provided together.
+
+### iOS `controlStyle`
+
+Supported values:
+
+- `0`: default AVKit controls
+- `1`: request documented linear-playback behavior
+- `2`: hide play/pause button and progress bar using private iOS behavior
+- `3`: hide all system controls using private iOS behavior
+
+Values `2` and `3` rely on private iOS behavior. They are preserved for backward
+compatibility because some integrations depend on them, but they increase App
+Store review risk and may break on future iOS releases.
 
 ## Basic Usage
 
 ```dart
 import 'package:pip/pip.dart';
 
-final _pip = Pip();
+final pip = Pip();
 ```
 
-### 1. Initialization and Feature Check
+Check capabilities before setup:
+
 ```dart
-// Check if device supports PiP
-bool isPipSupported = await _pip.isSupported();
-
-// Check if auto-enter PiP mode is supported
-bool isPipAutoEnterSupported = await _pip.isAutoEnterSupported();
-
-// Check if currently in PiP mode
-bool isPipActive = await _pip.isActive();
+final isSupported = await pip.isSupported();
+final isAutoEnterSupported = await pip.isAutoEnterSupported();
+final isActive = await pip.isActive();
 ```
 
-### 2. PiP Configuration
+Configure PiP:
+
 ```dart
 final options = PipOptions(
-  autoEnterEnabled: true,      // Enable/disable auto-enter PiP mode
-  // Android specific options
-  aspectRatioX: 16,           // Aspect ratio X value
-  aspectRatioY: 9,            // Aspect ratio Y value
-  sourceRectHintLeft: 0,      // Source rectangle left position
-  sourceRectHintTop: 0,       // Source rectangle top position
-  sourceRectHintRight: 1080,  // Source rectangle right position
-  sourceRectHintBottom: 720,  // Source rectangle bottom position
-  // iOS specific options
-  sourceContentView: 0,        // Source content view
-  contentView: 0,             // Content view to be displayed in PiP
-  preferredContentWidth: 480,  // Preferred content width
-  preferredContentHeight: 270, // Preferred content height
-  controlStyle: 1,            // Control style for PiP window
+  autoEnterEnabled: true,
+  aspectRatioX: 16,
+  aspectRatioY: 9,
 );
 
-await _pip.setup(options);
+await pip.setup(options);
 ```
 
-### 3. PiP State Monitoring
+Observe state changes:
+
 ```dart
-await _pip.registerStateChangedObserver(
+await pip.registerStateChangedObserver(
   PipStateChangedObserver(
     onPipStateChanged: (state, error) {
       switch (state) {
         case PipState.pipStateStarted:
-          print('PiP started successfully');
           break;
         case PipState.pipStateStopped:
-          print('PiP stopped');
           break;
         case PipState.pipStateFailed:
-          print('PiP failed: $error');
+          debugPrint('PiP failed: $error');
           break;
       }
     },
-  )
+  ),
 );
 ```
 
-### 4. PiP Lifecycle Management
+Request lifecycle changes:
+
 ```dart
-// Start PiP mode
-await _pip.start();
-
-// Stop PiP mode
-await _pip.stop();
-
-// Release PiP resources
-await _pip.dispose();
+await pip.start();
+await pip.stop();
+await pip.dispose();
 ```
 
-## API Reference
+## API Semantics
 
-### PipOptions
-```dart
-PipOptions({
-  bool? autoEnterEnabled,      // Enable/disable auto-enter PiP mode (default: false)
-  
-  // Android specific options
-  int? aspectRatioX,          // Aspect ratio X value
-  int? aspectRatioY,          // Aspect ratio Y value
-  int? sourceRectHintLeft,    // Source rectangle left position
-  int? sourceRectHintTop,     // Source rectangle top position
-  int? sourceRectHintRight,   // Source rectangle right position
-  int? sourceRectHintBottom,  // Source rectangle bottom position
-  bool? seamlessResizeEnabled, // Enable/disable seamless resize (default: false)
-  bool? useExternalStateMonitor, // Use external state monitor (default: false)
-  int? externalStateMonitorInterval, // External state monitor interval in milliseconds (default: 100)
-  
-  // iOS specific options
-  int? sourceContentView,      // Source content view
-  int? contentView,           // Content view to be displayed in PiP
-  int? preferredContentWidth, // Preferred content width
-  int? preferredContentHeight,// Preferred content height
-  int? controlStyle,          // Control style for PiP window
-                              // 0: default show all system controls
-                              // 1: request documented linear playback behavior
-                              // 2: hide play/pause button and progress bar using private iOS API
-                              // 3: hide all system controls using private iOS API
-})
-```
+- `start()` requests PiP start. A `true` return value means the platform call
+  succeeded, not that the PiP window is already visible. Use state callbacks to
+  observe the actual result.
+- `stop()` is platform-dependent. On Android it cannot always force-close the
+  system PiP window; in many cases it only returns the host activity toward the
+  foreground/background flow.
+- `isSupported()` means the device and OS support PiP primitives. It does not
+  guarantee your manifest, activity type, AVKit setup, or native iOS view
+  pipeline are fully configured.
+- `isAutoEnterSupported()` is narrower than `autoEnterEnabled`. It tells you
+  whether the current platform can honor auto-enter behavior.
+- `isActive()` is the supported API. `isActived()` remains as a deprecated
+  compatibility alias.
+- Native state callbacks use stable string codes internally (`started`,
+  `stopped`, `failed`) while still accepting older integer payloads for backward
+  compatibility.
 
-### PiP States
-```dart
-enum PipState {
-  pipStateStarted,  // PiP mode is active
-  pipStateStopped,  // PiP mode is stopped
-  pipStateFailed    // PiP operation failed
-}
-```
+## Example App
 
-### Core Methods
+See [`example/README.md`](example/README.md) for how to run the bundled sample.
+The example demonstrates:
 
-#### Check PiP Support
-```dart
-// Check basic PiP support
-Future<bool> isSupported()
+- Android manifest/activity setup with `PipActivity`
+- Android aspect ratio and source-rect configuration
+- iOS native source/content view wiring through the local `native_plugin`
 
-// Check auto-enter PiP support
-Future<bool> isAutoEnterSupported()
+## Notes
 
-// Check if PiP is currently active
-Future<bool> isActive()
-
-// Deprecated: use isActive() in new code
-Future<bool> isActived()
-```
-
-#### PiP Lifecycle Management
-```dart
-// Setup or update PiP configuration
-Future<bool> setup(PipOptions options)
-
-// Start PiP mode
-Future<bool> start()
-
-// Stop PiP mode
-Future<void> stop()
-
-// Clean up PiP resources
-Future<void> dispose()
-```
-
-#### State Management
-```dart
-// Register state change observer
-Future<void> registerStateChangedObserver(
-  PipStateChangedObserver observer
-)
-
-// Unregister state change observer
-Future<void> unregisterStateChangedObserver()
-```
-
-## Platform-Specific Considerations
-
-### Android
-- All aspect ratio and source rectangle configurations are Android-specific
-- Source rectangle hints help smooth transitions into PiP mode
-- `pipStop()` operation only switches the app to background
-- Ensure necessary permissions are declared in the app
-- Additional Android-specific features:
-  - `seamlessResizeEnabled`: Enable smooth resizing of PiP window
-  - `useExternalStateMonitor`: Use external thread to monitor PiP state
-  - `externalStateMonitorInterval`: Set monitoring interval in milliseconds
-
-### iOS
-- Content view and dimension settings are iOS-specific
-- Call `pipStart()` when the app enters background (`AppLifecycleState.inactive`)
-- Call `pipStop()` when the app returns to foreground (`AppLifecycleState.resumed`)
-- Recommended to use `autoEnterEnabled` for automatic PiP mode entry
-- The `contentView` will be added to the PiP view after setup, and you are responsible for rendering the content view
-- Choose appropriate `controlStyle` based on your needs:
-  - Style 0: Shows all system controls (default)
-  - Style 1: Requests documented linear playback behavior, which hides forward and backward controls where AVKit supports it
-  - Style 2: Hides play/pause button and progress bar using private iOS API
-  - Style 3: Hides all system controls using private iOS API
-- On iOS, `controlStyle` values 2 and 3 rely on private AVKit behavior. They may break on future iOS versions and can increase App Store review risk.
-- How to set the size of the PiP window? Just set the `preferredContentWidth` and `preferredContentHeight` in the `PipOptions`
-
-## Best Practices
-
-1. **Platform-Specific Configuration**
-```dart
-if (Platform.isAndroid) {
-  options = PipOptions(
-    autoEnterEnabled: true,
-    aspectRatioX: 16,
-    aspectRatioY: 9,
-  );
-} else if (Platform.isIOS) {
-  options = PipOptions(
-    autoEnterEnabled: true,
-    contentView: someView,
-    sourceContentView: someOtherView,
-    preferredContentWidth: 480,
-    preferredContentHeight: 270,
-    controlStyle: 1,
-  );
-}
-```
-
-2. **Proper Resource Management**
-```dart
-@override
-void dispose() {
-  _pip.unregisterStateChangedObserver();
-  _pip.dispose();
-  super.dispose();
-}
-```
-
-3. **Error Handling**
-```dart
-try {
-  await _pip.start();
-} catch (e) {
-  print('Error starting PiP: $e');
-}
-```
-
-## Common Issues
-
-1. **PiP Won't Start**
-   - Verify device supports PiP
-   - Confirm PiP parameters are set correctly
-   - Check error callback messages
-
-2. **Auto-Enter Mode Not Working**
-   - Confirm device supports auto-enter functionality
-   - Verify `autoEnterEnabled` setting
-
-3. **PiP Window Ratio Issues**
-   - Ensure correct aspect ratio settings
-   - Be aware of platform-specific limitations
-
-## Tips for Implementation
-1. Always check device compatibility before enabling PiP features
-2. Implement proper error handling for better user experience
-3. Consider platform differences when implementing PiP functionality
-4. Test thoroughly on both Android and iOS devices
-5. Handle app lifecycle changes appropriately
+- Call `unregisterStateChangedObserver()` and `dispose()` when your integration
+  no longer needs PiP resources.
+- On iOS, you are responsible for the lifetime of the native content view you
+  pass into `PipOptions`.
+- On Android, `useExternalStateMonitor` exists because some host activity paths
+  do not naturally forward PiP state changes back to Flutter.
