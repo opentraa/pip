@@ -1,0 +1,12 @@
+name: Question
+description: Ask about setup or expected behavior.
+title: "[Question]: "
+labels: ["question"]
+body:
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: Include what you tried and relevant platform details.
+    validations:
+      required: true

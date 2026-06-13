@@ -1,0 +1,43 @@
+name: Bug report
+description: Report a reproducible problem with pip.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the problem and what you expected.
+    validations:
+      required: true
+  - type: input
+    id: pip_version
+    attributes:
+      label: Package version
+      placeholder: "e.g. 0.0.3 (from pubspec.yaml)"
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - Android
+        - iOS
+        - Both
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include Flutter version, OS version, device model, and logs.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      description: Provide a minimal reproduction or exact steps.
+    validations:
+      required: true
