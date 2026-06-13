@@ -62,7 +62,7 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: "8.3"
+          gradle-version: "9.1.0"
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
