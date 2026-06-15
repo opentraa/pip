@@ -14,7 +14,6 @@ jobs:
     permissions:
       actions: write
       contents: write
-      models: read
 
     steps:
       - name: Checkout
