@@ -18,11 +18,6 @@ if [[ "$*" == *"/releases/generate-notes"* ]]; then
   exit 0
 fi
 
-if [[ "$*" == *"/ai/models/openai/gpt-4.1-mini/inference"* ]]; then
-  printf '%s' "## Summary"$'\n'"- Added isActive API"$'\n'"- Improved lifecycle handling"
-  exit 0
-fi
-
 echo "unexpected gh invocation: $*" >&2
 exit 1
 EOF
@@ -33,9 +28,11 @@ chmod +x "$tmp_dir/bin/gh"
   PATH="$tmp_dir/bin:$PATH" GITHUB_MODELS_TOKEN=dummy ./scripts/generate_release_notes.sh 0.0.4 opentraa/pip main notes.md
 )
 
-grep -Fq '## Summary' "$tmp_dir/notes.md"
-grep -Fq -- '- Added isActive API' "$tmp_dir/notes.md"
 grep -Fq "## What's Changed" "$tmp_dir/notes.md"
+if grep -Fq '## Summary' "$tmp_dir/notes.md"; then
+  echo "notes should not contain AI-generated summary content" >&2
+  exit 1
+fi
 
 cat > "$tmp_dir/bin/gh" <<'EOF'
 #!/usr/bin/env bash
@@ -53,12 +50,16 @@ chmod +x "$tmp_dir/bin/gh"
 
 (
   cd "$tmp_dir"
-  PATH="$tmp_dir/bin:$PATH" ./scripts/generate_release_notes.sh 0.0.4 opentraa/pip main notes-fallback.md
+  PATH="$tmp_dir/bin:$PATH" GITHUB_MODELS_TOKEN=dummy ./scripts/generate_release_notes.sh 0.0.4 opentraa/pip main notes-fallback.md
 )
 
 grep -Fq "## What's Changed" "$tmp_dir/notes-fallback.md"
 if grep -Fq '## Summary' "$tmp_dir/notes-fallback.md"; then
   echo "fallback notes should not contain AI summary" >&2
+  exit 1
+fi
+if grep -Fq '"message": "Not Found"' "$tmp_dir/notes-fallback.md"; then
+  echo "fallback notes should not contain GitHub API error payloads" >&2
   exit 1
 fi
 

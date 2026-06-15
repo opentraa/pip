@@ -32,31 +32,6 @@ notes="$(
 )"
 
 summary=""
-if [[ -n "${GITHUB_MODELS_TOKEN:-}" ]]; then
-  prompt=$(
-    cat <<EOF
-Summarize the following GitHub release notes for a Flutter plugin release.
-Return markdown only.
-Keep it factual and concise.
-Write:
-- a title line: ## Summary
-- 3 to 6 bullet points
-- no invented information
-
-Release notes:
-${notes}
-EOF
-  )
-
-  summary="$(
-    gh api \
-      -X POST \
-      -H "Accept: application/vnd.github+json" \
-      "/ai/models/openai/gpt-4.1-mini/inference" \
-      -f "prompt=${prompt}" \
-      --jq '.output[0].content[0].text' 2>/dev/null || true
-  )"
-fi
 
 {
   if [[ -n "$summary" ]]; then
