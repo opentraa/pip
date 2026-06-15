@@ -1,3 +1,7 @@
+# 0.0.4
+
+- TBD
+
 # 0.0.3
 
 * Add seamless resize support for Android.
