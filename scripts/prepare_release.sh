@@ -22,8 +22,8 @@ readme="$repo_root/README.md"
 changelog="$repo_root/CHANGELOG.md"
 release_notes="$repo_root/.release-notes.md"
 
-if [[ ! -f "$pubspec" || ! -f "$podspec" || ! -f "$release_notes" ]]; then
-  echo "Expected pubspec.yaml, ios/pip.podspec, and .release-notes.md to exist" >&2
+if [[ ! -f "$pubspec" || ! -f "$podspec" || ! -f "$readme" || ! -f "$changelog" || ! -f "$release_notes" ]]; then
+  echo "Expected pubspec.yaml, ios/pip.podspec, README.md, CHANGELOG.md, and .release-notes.md to exist" >&2
   exit 1
 fi
 
