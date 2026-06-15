@@ -57,4 +57,4 @@ jobs:
       - name: Create GitHub release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm run release -- --ci ${{ inputs.version }}
+        run: npm run release -- --ci --verbose ${{ inputs.version }}
