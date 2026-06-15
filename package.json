@@ -2,9 +2,12 @@
   "private": true,
   "scripts": {
     "release": "release-it",
-    "release:dry-run": "release-it --dry-run"
+    "release:dry-run": "release-it --dry-run",
+    "release:prepare": "./scripts/prepare_release.sh",
+    "release:notes": "./scripts/generate_release_notes.sh"
   },
   "devDependencies": {
+    "@release-it/bumper": "^7.0.6",
     "release-it": "^18.0.0"
   }
 }

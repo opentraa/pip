@@ -29,6 +29,11 @@ migrate_working_dir/
 build/
 .build/
 .swiftpm/
+coverage/
+node_modules/
+.codex/
+/docs/superpowers/
+.release-notes.md
 
 # FVM Version Cache
 .fvm/

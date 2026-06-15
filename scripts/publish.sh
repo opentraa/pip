@@ -8,7 +8,7 @@ case "$mode" in
     dart pub publish --dry-run
     ;;
   publish)
-    dart pub publish
+    dart pub publish --force
     ;;
   *)
     echo "Usage: $0 [dry-run|publish]" >&2
