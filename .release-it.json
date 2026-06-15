@@ -1,12 +1,34 @@
 {
+  "hooks": {
+    "after:bump": "./scripts/prepare_release.sh ${version}",
+    "before:git:release": "RELEASE_VERSION=${version} ./scripts/check_release_ready.sh"
+  },
+  "plugins": {
+    "@release-it/bumper": {
+      "in": {
+        "file": "pubspec.yaml",
+        "path": "version"
+      },
+      "out": [
+        {
+          "file": "pubspec.yaml",
+          "path": "version"
+        },
+        {
+          "file": "ios/pip.podspec",
+          "type": "text/plain"
+        }
+      ]
+    }
+  },
   "git": {
     "commitMessage": "chore: release ${version}",
-    "tagName": "v${version}"
+    "tagName": "v${version}",
+    "requireUpstream": false
   },
   "github": {
-    "release": true
+    "release": true,
+    "releaseNotes": "cat .release-notes.md"
   },
-  "npm": {
-    "publish": false
-  }
+  "npm": false
 }

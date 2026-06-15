@@ -211,3 +211,14 @@ The example demonstrates:
   pass into `PipOptions`.
 - On Android, `useExternalStateMonitor` exists because some host activity paths
   do not naturally forward PiP state changes back to Flutter.
+
+## Release Process
+
+Maintainers publish new versions through GitHub Actions:
+
+- Run the `Release` workflow with the target version number.
+- The workflow generates GitHub release notes, optionally prepends a GitHub
+  Models summary, updates release metadata, and creates the GitHub Release.
+- The resulting tag automatically triggers the `Publish` workflow for `pub.dev`.
+
+The `Publish` workflow depends on Dart automated publishing for GitHub Actions.

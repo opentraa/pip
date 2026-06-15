@@ -13,12 +13,14 @@ jobs:
     runs-on: macos-latest
     permissions:
       contents: write
+      models: read
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.ref_name }}
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -35,13 +37,22 @@ jobs:
       - name: Install release tooling
         run: npm ci
 
+      - name: Generate release notes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_MODELS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+        run: ./scripts/generate_release_notes.sh ${{ inputs.version }} ${{ github.repository }} ${{ github.ref_name }} .release-notes.md
+
       - name: Run package checks
         run: ./scripts/check.sh
 
-      - name: Check release metadata
-        env:
-          RELEASE_VERSION: ${{ inputs.version }}
-        run: ./scripts/check_release_ready.sh
+      - name: Check Swift Package Manager support
+        run: ./scripts/check_spm.sh
+
+      - name: Check Android deprecated API usage
+        run: ./scripts/check_android_deprecated_api.sh
 
       - name: Create GitHub release
         env:

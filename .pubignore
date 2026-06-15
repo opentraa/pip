@@ -8,6 +8,11 @@ coverage/
 .flutter-plugins
 .flutter-plugins-dependencies
 .packages
+node_modules/
+package.json
+package-lock.json
+.release-it.json
+.release-notes.md
 
 # Generated example app state.
 example/.dart_tool/

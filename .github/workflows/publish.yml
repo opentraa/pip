@@ -1,17 +1,14 @@
 name: Publish
 
 on:
-  workflow_dispatch:
-    inputs:
-      dry_run:
-        description: Run pub publish in dry-run mode
-        required: true
-        default: true
-        type: boolean
+  push:
+    tags:
+      - 'v*.*.*'
 
 jobs:
   publish:
     runs-on: macos-latest
+    environment: pub.dev
     permissions:
       contents: read
       id-token: write
@@ -26,16 +23,14 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Set up Dart for pub.dev publishing
+        uses: dart-lang/setup-dart@v1
+
       - name: Run package checks
         run: ./scripts/check.sh
 
       - name: Check release metadata
         run: ./scripts/check_release_ready.sh
 
-      - name: Publish dry run
-        if: inputs.dry_run
-        run: ./scripts/publish.sh dry-run
-
       - name: Publish to pub.dev
-        if: ${{ !inputs.dry_run }}
         run: ./scripts/publish.sh publish
