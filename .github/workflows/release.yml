@@ -58,3 +58,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run release -- --ci --verbose ${{ inputs.version }}
+
+      - name: Trigger Publish workflow for released tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run Publish --ref v${{ inputs.version }}
