@@ -14,6 +14,6 @@ grep -Fq "    environment: pub.dev" "$workflow"
 grep -Fq "uses: dart-lang/setup-dart@v1" "$workflow"
 grep -Fq "format('refs/tags/{0}', inputs.tag)" "$workflow"
 grep -Fq '|| github.ref }}' "$workflow"
-grep -Fq 'if [[ "${GITHUB_REF_NAME}" != v*.*.* ]]; then' "$workflow"
+grep -Fq 'if [[ ! "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then' "$workflow"
 
 echo "publish workflow tests passed"
