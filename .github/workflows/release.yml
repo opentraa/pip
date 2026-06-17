@@ -57,6 +57,3 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run release -- --ci --verbose ${{ inputs.version }}
-
-      - name: Publish to pub.dev
-        run: ./scripts/publish.sh publish

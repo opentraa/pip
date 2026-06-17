@@ -23,7 +23,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || github.ref }}
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -39,6 +39,7 @@ jobs:
             echo "Publish workflow requires a tag ref like v0.0.4" >&2
             exit 1
           fi
+          git rev-parse -q --verify "refs/tags/${GITHUB_REF_NAME}" >/dev/null
 
       - name: Set up Dart for pub.dev publishing
         uses: dart-lang/setup-dart@v1
