@@ -1,6 +1,8 @@
 name: pip
-description: "A Flutter Picture in Picture plugin for Android and iOS with platform setup helpers, state callbacks, and native PiP view support."
-version: 0.0.3
+description: >-
+  A Flutter Picture in Picture plugin for Android and iOS with platform setup
+  helpers, state callbacks, and native PiP view support.
+version: 0.0.4
 homepage: https://github.com/opentraa/pip
 repository: https://github.com/opentraa/pip
 issue_tracker: https://github.com/opentraa/pip/issues
