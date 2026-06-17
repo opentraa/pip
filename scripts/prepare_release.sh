@@ -20,9 +20,10 @@ pubspec="$repo_root/pubspec.yaml"
 podspec="$repo_root/ios/pip.podspec"
 readme="$repo_root/README.md"
 changelog="$repo_root/CHANGELOG.md"
+release_notes="$repo_root/.release-notes.md"
 
-if [[ ! -f "$pubspec" || ! -f "$podspec" ]]; then
-  echo "Expected pubspec.yaml and ios/pip.podspec to exist" >&2
+if [[ ! -f "$pubspec" || ! -f "$podspec" || ! -f "$readme" || ! -f "$changelog" || ! -f "$release_notes" ]]; then
+  echo "Expected pubspec.yaml, ios/pip.podspec, README.md, CHANGELOG.md, and .release-notes.md to exist" >&2
   exit 1
 fi
 
@@ -33,7 +34,7 @@ if ! grep -Eq "^# $version$|^## $version$" "$changelog"; then
   {
     echo "# $version"
     echo
-    echo "- TBD"
+    cat "$release_notes"
     echo
     cat "$changelog"
   } > "$tmp_file"

@@ -27,7 +27,7 @@
     "requireUpstream": false
   },
   "github": {
-    "release": true,
+    "release": false,
     "releaseNotes": "cat .release-notes.md"
   },
   "npm": false
