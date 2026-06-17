@@ -13,8 +13,8 @@ cp "$repo_root/CHANGELOG.md" "$tmp_dir/CHANGELOG.md"
 cp "$repo_root/scripts/prepare_release.sh" "$tmp_dir/scripts/prepare_release.sh"
 chmod +x "$tmp_dir/scripts/prepare_release.sh"
 
-original_pubspec="$(cat "$tmp_dir/pubspec.yaml")"
-original_podspec="$(cat "$tmp_dir/ios/pip.podspec")"
+cp "$tmp_dir/pubspec.yaml" "$tmp_dir/original_pubspec.yaml"
+cp "$tmp_dir/ios/pip.podspec" "$tmp_dir/original_podspec"
 
 cat > "$tmp_dir/.release-notes.md" <<'EOF'
 ## Summary
@@ -31,12 +31,12 @@ EOF
   ./scripts/prepare_release.sh 9.9.9
 )
 
-if [[ "$(cat "$tmp_dir/pubspec.yaml")" != "$original_pubspec" ]]; then
+if ! cmp -s "$tmp_dir/original_pubspec.yaml" "$tmp_dir/pubspec.yaml"; then
   echo "prepare_release.sh must not modify pubspec.yaml" >&2
   exit 1
 fi
 
-if [[ "$(cat "$tmp_dir/ios/pip.podspec")" != "$original_podspec" ]]; then
+if ! cmp -s "$tmp_dir/original_podspec" "$tmp_dir/ios/pip.podspec"; then
   echo "prepare_release.sh must not modify ios/pip.podspec" >&2
   exit 1
 fi
