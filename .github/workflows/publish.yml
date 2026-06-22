@@ -84,5 +84,5 @@ jobs:
     if: github.event_name == 'push'
     needs: prepublish
     permissions:
+      contents: read
       id-token: write
-    uses: dart-lang/setup-dart/.github/workflows/publish.yml@v1
