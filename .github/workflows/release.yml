@@ -56,4 +56,10 @@ jobs:
       - name: Create GitHub release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm run release -- --ci --verbose ${{ inputs.version }}
+        run: |
+          npm run release -- --ci --verbose ${{ inputs.version }}
+          gh release create "v${{ inputs.version }}" \
+            --repo "${{ github.repository }}" \
+            --title "Release ${{ inputs.version }}" \
+            --notes-file .release-notes.md \
+            --verify-tag
