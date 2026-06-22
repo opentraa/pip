@@ -9,7 +9,7 @@ grep -Fq "  workflow_dispatch:" "$workflow"
 grep -Fq "      tag:" "$workflow"
 grep -Fq "        description: Existing release tag to publish, for example v0.0.4" "$workflow"
 grep -Fq "  push:" "$workflow"
-grep -Fq "      - 'v[0-9]+.[0-9]+.[0-9]+'" "$workflow"
+grep -Fq "      - 'v*.*.*'" "$workflow"
 
 grep -Fq "  dry-run:" "$workflow"
 grep -Fq "    if: github.event_name == 'workflow_dispatch'" "$workflow"
