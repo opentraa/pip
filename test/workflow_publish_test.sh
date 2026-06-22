@@ -10,13 +10,28 @@ grep -Fq "      tag:" "$workflow"
 grep -Fq "        description: Existing release tag to publish, for example v0.0.4" "$workflow"
 grep -Fq "  push:" "$workflow"
 grep -Fq "      - 'v*.*.*'" "$workflow"
-grep -Fq "    environment: pub.dev" "$workflow"
+
+grep -Fq "  dry-run:" "$workflow"
+grep -Fq "    if: github.event_name == 'workflow_dispatch'" "$workflow"
 grep -Fq "uses: dart-lang/setup-dart@v1" "$workflow"
-grep -Fq "format('refs/tags/{0}', inputs.tag)" "$workflow"
-grep -Fq '|| github.ref }}' "$workflow"
-grep -Fq 'REQUESTED_TAG: ${{ github.event_name == '\''workflow_dispatch'\'' && inputs.tag || github.ref_name }}' "$workflow"
-grep -Fq 'if [[ ! "${REQUESTED_TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then' "$workflow"
-grep -Fq 'actual_tag="$(git describe --tags --exact-match HEAD 2>/dev/null || true)"' "$workflow"
-grep -Fq 'git rev-parse -q --verify "refs/tags/${REQUESTED_TAG}" >/dev/null' "$workflow"
+grep -Fq "run: ./scripts/check.sh" "$workflow"
+grep -Fq "run: ./scripts/check_release_ready.sh" "$workflow"
+grep -Fq "run: ./scripts/publish.sh dry-run" "$workflow"
+
+grep -Fq "  prepublish:" "$workflow"
+grep -Fq "    if: github.event_name == 'push'" "$workflow"
+grep -Fq "run: ./scripts/check.sh" "$workflow"
+grep -Fq "run: ./scripts/check_release_ready.sh" "$workflow"
+
+grep -Fq "  publish:" "$workflow"
+grep -Fq "    if: github.event_name == 'push'" "$workflow"
+grep -Fq "    needs: prepublish" "$workflow"
+grep -Fq "uses: dart-lang/setup-dart/.github/workflows/publish.yml@v1" "$workflow"
+grep -Fq "      contents: read" "$workflow"
+grep -Fq "      id-token: write" "$workflow"
+if grep -Fq "./scripts/publish.sh publish" "$workflow"; then
+  echo "publish workflow should use the Dart reusable publish workflow for real publishing" >&2
+  exit 1
+fi
 
 echo "publish workflow tests passed"
