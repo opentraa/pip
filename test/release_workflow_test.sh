@@ -7,6 +7,7 @@ workflow="$repo_root/.github/workflows/release.yml"
 grep -Fq 'Generate release notes' "$workflow"
 grep -Fq './scripts/generate_release_notes.sh ${{ inputs.version }} ${{ github.repository }} ${{ github.ref_name }} .release-notes.md' "$workflow"
 grep -Fq 'npm run release -- --ci --verbose ${{ inputs.version }}' "$workflow"
+grep -Fq 'gh release create "v${{ inputs.version }}"' "$workflow"
 if grep -Fq 'Publish to pub.dev' "$workflow"; then
   echo "release workflow must not publish to pub.dev directly" >&2
   exit 1
