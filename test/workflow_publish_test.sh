@@ -27,8 +27,8 @@ grep -Fq "  publish:" "$workflow"
 grep -Fq "    if: github.event_name == 'push'" "$workflow"
 grep -Fq "    needs: prepublish" "$workflow"
 grep -Fq "uses: dart-lang/setup-dart/.github/workflows/publish.yml@v1" "$workflow"
-grep -Fq "id-token: write" "$workflow"
-
+grep -Fq "      contents: read" "$workflow"
+grep -Fq "      id-token: write" "$workflow"
 if grep -Fq "./scripts/publish.sh publish" "$workflow"; then
   echo "publish workflow should use the Dart reusable publish workflow for real publishing" >&2
   exit 1
