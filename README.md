@@ -22,7 +22,7 @@ Add the plugin to your app:
 
 ```yaml
 dependencies:
-  pip: ^0.0.3
+  pip: ^0.0.4
 ```
 
 Then run:
