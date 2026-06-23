@@ -218,7 +218,9 @@ Maintainers publish new versions through GitHub Actions:
 
 - Run the `Release` workflow with the target version number.
 - The workflow generates GitHub release notes, optionally prepends a GitHub
-  Models summary, updates release metadata, and creates the GitHub Release.
-- The resulting tag automatically triggers the `Publish` workflow for `pub.dev`.
+  Models summary, updates release metadata, and creates the GitHub Release
+  using a `vX.Y.Z` tag.
+- After reviewing the GitHub release, manually create and push a matching
+  `X.Y.Z` tag to trigger the `Publish` workflow for `pub.dev`.
 
 The `Publish` workflow depends on Dart automated publishing for GitHub Actions.
