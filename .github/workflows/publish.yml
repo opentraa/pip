@@ -4,12 +4,12 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing release tag to publish, for example v0.0.4
+        description: Existing pub.dev release tag to publish, for example 0.0.4
         required: true
         type: string
   push:
     tags:
-      - 'v*.*.*'
+      - '*.*.*'
 
 jobs:
   dry-run:
@@ -21,8 +21,8 @@ jobs:
         env:
           TAG: ${{ inputs.tag }}
         run: |
-          if [[ ! "${TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Invalid tag format: '${TAG}'. Tag must match pattern v0.0.0 (e.g., v0.0.4)" >&2
+          if [[ ! "${TAG}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid tag format: '${TAG}'. Tag must match pattern 0.0.0 (e.g., 0.0.4)" >&2
             exit 1
           fi
 
@@ -58,8 +58,8 @@ jobs:
         env:
           TAG: ${{ github.ref_name }}
         run: |
-          if [[ ! "${TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Invalid tag format: '${TAG}'. Tag must match pattern v0.0.0 (e.g., v0.0.4)" >&2
+          if [[ ! "${TAG}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid tag format: '${TAG}'. Tag must match pattern 0.0.0 (e.g., 0.0.4)" >&2
             exit 1
           fi
 
