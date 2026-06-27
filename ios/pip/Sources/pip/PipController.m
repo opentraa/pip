@@ -63,6 +63,10 @@
 @property(nonatomic, strong) AVPictureInPictureController *pipController;
 @property(nonatomic, assign) BOOL privateControlsStyleApplied;
 
+// snapshot of all windows before PIP starts, used to identify the new PIP
+// floating window in pictureInPictureControllerDidStartPictureInPicture
+@property(nonatomic, strong) NSArray<UIWindow *> *windowsBeforePip;
+
 @end
 
 @implementation PipController
@@ -102,6 +106,72 @@
   }
 
   return fallbackKeyWindow;
+}
+
+- (NSArray<UIWindow *> *)allWindowsFromAllScenes {
+  NSMutableArray<UIWindow *> *windows = [NSMutableArray array];
+  for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+    if (![scene isKindOfClass:UIWindowScene.class]) {
+      continue;
+    }
+    UIWindowScene *windowScene = (UIWindowScene *)scene;
+    [windows addObjectsFromArray:windowScene.windows];
+  }
+  return [windows copy];
+}
+
+// Find the floating PIP window created by AVPictureInPictureController.
+//
+// On iOS 15-18, activeKeyWindow reliably returned the PIP window because it
+// became the key window in a ForegroundActive scene. On iOS 26+, the PIP
+// window's scene may no longer satisfy those conditions, so we use a more
+// robust strategy:
+//
+// 1. Prefer a window that appeared *after* the PIP snapshot was taken and
+//    lives in a UIWindowScene different from the main app's scene.
+// 2. Fall back to any window in a different scene that has a root VC.
+// 3. Fall back to any newly added window (any scene) with a root VC.
+// 4. Return nil so the caller can fall back to activeKeyWindow.
+- (UIWindow *_Nullable)findPipFloatingWindow {
+  UIWindow *sourceWindow = _pipView.window;
+  UIWindowScene *sourceScene = sourceWindow.windowScene;
+
+  NSArray<UIWindow *> *currentWindows = [self allWindowsFromAllScenes];
+  NSSet<UIWindow *> *snapshotSet =
+      _windowsBeforePip ? [NSSet setWithArray:_windowsBeforePip] : nil;
+
+  // Strategy 1: new window in a different scene
+  if (snapshotSet != nil && sourceScene != nil) {
+    for (UIWindow *window in currentWindows) {
+      if ([snapshotSet containsObject:window]) continue;
+      if (window.windowScene == sourceScene) continue;
+      if (window.rootViewController == nil) continue;
+      PIP_LOG(@"findPipFloatingWindow: found via new+different-scene strategy");
+      return window;
+    }
+  }
+
+  // Strategy 2: any window in a different scene with a root VC
+  if (sourceScene != nil) {
+    for (UIWindow *window in currentWindows) {
+      if (window.windowScene == sourceScene) continue;
+      if (window.rootViewController == nil) continue;
+      PIP_LOG(@"findPipFloatingWindow: found via different-scene strategy");
+      return window;
+    }
+  }
+
+  // Strategy 3: any new window with a root VC (cross-scene fallback)
+  if (snapshotSet != nil) {
+    for (UIWindow *window in currentWindows) {
+      if ([snapshotSet containsObject:window]) continue;
+      if (window.rootViewController == nil) continue;
+      PIP_LOG(@"findPipFloatingWindow: found via new-window strategy");
+      return window;
+    }
+  }
+
+  return nil;
 }
 
 - (void)applyControlStyle:(int)controlStyle {
@@ -421,7 +491,10 @@
   contentView.translatesAutoresizingMaskIntoConstraints = YES;
   contentView.autoresizingMask =
       UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-  contentView.frame = newParentView.frame;
+  // Use bounds (always origin at 0,0) rather than frame (origin in parent's
+  // coordinate space) so the content view fills the parent from the top-left
+  // corner regardless of where the parent is positioned on screen.
+  contentView.frame = newParentView.bounds;
 
   // It seems like no need to do so.
   // [newParentView addConstraints:@[
@@ -546,17 +619,37 @@
 - (void)pictureInPictureControllerWillStartPictureInPicture:
     (AVPictureInPictureController *)pictureInPictureController {
   PIP_LOG(@"pictureInPictureControllerWillStartPictureInPicture");
+  // Snapshot all current windows so we can identify the newly created PIP
+  // floating window in pictureInPictureControllerDidStartPictureInPicture.
+  _windowsBeforePip = [self allWindowsFromAllScenes];
 }
 
 - (void)pictureInPictureControllerDidStartPictureInPicture:
     (AVPictureInPictureController *)pictureInPictureController {
   PIP_LOG(@"pictureInPictureControllerDidStartPictureInPicture");
 
-  UIWindow *window = [self activeKeyWindow];
+  // On iOS 15-18, activeKeyWindow reliably returned the PIP floating window.
+  // On iOS 26+, the PIP window's UIWindowScene may no longer satisfy the
+  // isKeyWindow / ForegroundActive conditions, so we first try the more
+  // robust findPipFloatingWindow strategy and only fall back to
+  // activeKeyWindow if that returns nil.
+  UIWindow *window = [self findPipFloatingWindow];
+  _windowsBeforePip = nil;
+
+  if (window == nil) {
+    PIP_LOG(@"findPipFloatingWindow returned nil, falling back to "
+            @"activeKeyWindow");
+    window = [self activeKeyWindow];
+  }
+
   if (window) {
     UIViewController *rootViewController = window.rootViewController;
-    UIView *superview = rootViewController.view.superview;
-    [self insertContentViewIfNeeded:superview];
+    // Use superview of the root view (UITransitionView) when available.
+    // Fall back to rootViewController.view itself if superview is nil (e.g.
+    // when the PIP window's view hierarchy differs on newer iOS versions).
+    UIView *parentView =
+        rootViewController.view.superview ?: rootViewController.view;
+    [self insertContentViewIfNeeded:parentView];
   }
 
   _isPipActived = YES;
